@@ -3,8 +3,6 @@
 
 import { MapContainer, TileLayer, FeatureGroup, useMap, Marker, Popup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
-import 'leaflet/dist/leaflet.css'
-import 'leaflet-draw/dist/leaflet.draw.css'
 
 // Fix for marker icon issue with webpack
 import L from 'leaflet'
@@ -33,7 +31,7 @@ export default function Map({ companies, selectedCompany, onSearch }: { companie
   };
 
   return (
-    <MapContainer center={[46.603354, 1.888334]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+    <MapContainer center={[46.603354, 1.888334]} zoom={6} scrollWheelZoom={true} className="absolute inset-0">
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

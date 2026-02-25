@@ -1,16 +1,17 @@
 
+// This is an example file. Copy this to src/lib/firebase.ts and fill in your own credentials.
+
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBM-SlSxzLSO40Tk45Y1KkPPyWG3sJQHWo",
-  authDomain: "test-firebase-ed0a6.firebaseapp.com",
-  projectId: "test-firebase-ed0a6",
-  storageBucket: "test-firebase-ed0a6.appspot.com",
-  messagingSenderId: "590276637809",
-  appId: "1:590276637809:web:154f2046331cce9f2617d0"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 // Initialize Firebase

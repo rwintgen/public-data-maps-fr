@@ -46,8 +46,8 @@ export default function Home() {
 
   return (
     <main className="flex h-screen">
-      <div className="w-2/3">
-        <Map companies={companies} selectedCompany={selectedCompany} onSearch={handleSearch} />
+      <div className="w-2/3 h-full relative">
+        <div className="bg-red-500 w-full h-full">Is this red box visible?</div>
       </div>
       <div className="w-1/3 overflow-y-auto p-4">
         <h1 className="text-2xl font-bold mb-4">Sirene Area Companies</h1>

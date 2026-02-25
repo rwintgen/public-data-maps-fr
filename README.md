@@ -12,52 +12,44 @@ To get a local copy up and running, follow these simple steps.
 
 ### Prerequisites
 
-You need to have Node.js and npm installed on your machine. You will also need a Firebase account.
+You need to have Node.js and npm installed on your machine. You will also need a Google account for Firebase.
 
 ### Installation & Setup
 
 1.  **Fork the repository** and clone it to your local machine.
+
 2.  **Install NPM packages:**
     ```bash
     npm install
     ```
+
 3.  **Set up your own Firebase Project:**
+    This project uses Firebase for user authentication and for saving drawn areas. You will need to create your own free Firebase project to run the app locally.
+
     1.  Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-    2.  Create a new Web App within your Firebase project.
-    3.  Copy the Firebase configuration object provided.
-    4.  Create a file named `firebase.ts` inside a `src/lib/` directory.
-    5.  Paste your copied Firebase config into `src/lib/firebase.ts`. It should look something like this:
-        ```typescript
-        import { initializeApp } from "firebase/app";
-
-        const firebaseConfig = {
-          apiKey: "AIza....",
-          authDomain: "your-project-id.firebaseapp.com",
-          projectId: "your-project-id",
-          storageBucket: "your-project-id.appspot.com",
-          messagingSenderId: "...",
-          appId: "1:..."
-        };
-
-        const app = initializeApp(firebaseConfig);
-
-        export { app };
+    2.  In your new project, go to **Project Settings** (click the gear icon) and select **Add app**, choosing the **Web** platform.
+    3.  Copy the `firebaseConfig` object provided.
+    4.  Now, in your local project code, create your credentials file by copying the example:
+        ```bash
+        cp src/lib/firebase.example.ts src/lib/firebase.ts
         ```
-    6.  In the Firebase console, enable the **Firestore** database.
+        *(Note: `src/lib/firebase.ts` is ignored by Git, so your private keys will not be committed.)*
+    5.  Paste your `firebaseConfig` object into the newly created `src/lib/firebase.ts`, replacing the placeholder values.
+    6.  In the Firebase console, go to the **Authentication** section and enable the **Google** sign-in provider.
+    7.  In the Firebase console, go to the **Firestore Database** section and create a database. Start in **test mode** for now, which allows open access for development.
 
 4.  **Run the development server:**
     ```bash
     npm run dev
     ```
-5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Project Roadmap (TODO)
+5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result. You should be able to log in with your Google account and save areas on the map.
+
+## Project Roadmap
 
 Here are some areas where you can contribute:
 
-- [ ] Implement user authentication with Firebase.
-- [ ] Connect the front-end to the Firestore database.
-- [ ] Implement the search functionality to query the Firestore database.
-- [ ] Deploy the app to Firebase Hosting.
 - [ ] Plug in the real SIRENE/PostGIS data source for company data.
-
+- [ ] Implement the search functionality to query the company database.
+- [ ] Display the fetched company data on the frontend.
+- [ ] Deploy the app to a hosting service like Vercel or Firebase Hosting.
