@@ -59,9 +59,9 @@ Here are some areas where you can contribute:
 
 - [x] Plug in the real SIRENE data source for company data (CSV-based, see dataset section above).
 - [ ] Migrate to a PostGIS database for better performance with the full dataset.
-- [ ] Implement the search functionality to query the company database.
-- [ ] Add filters
-- [ ] Fix area saving when logged in
+- [ ] Implement the search functionality to query the company database in addition to just locations.
+- [x] Add filters
+- [x] Fix area saving when logged in
 - [x] Improve UI/UX
 - [ ] Add other data types (currently only companies)
 - [ ] Deploy the app to a hosting service like Vercel or Firebase Hosting.
