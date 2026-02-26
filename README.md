@@ -1,4 +1,4 @@
-# Sirene Area Companies (Open Source)
+# Public Data Maps (France)
 
 This is a full-stack web app that allows users to draw a custom area on a map of France and get a list of all company headquarters located inside that area. This project is open source and we welcome contributions!
 
@@ -51,5 +51,8 @@ Here are some areas where you can contribute:
 
 - [ ] Plug in the real SIRENE/PostGIS data source for company data.
 - [ ] Implement the search functionality to query the company database.
-- [ ] Display the fetched company data on the frontend.
+- [ ] Add filters
+- [ ] Fix area saving when loged in
+- [ ] Improve UI/UX
+- [ ] Add other data types (currently only companies)
 - [ ] Deploy the app to a hosting service like Vercel or Firebase Hosting.

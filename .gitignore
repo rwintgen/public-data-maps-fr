@@ -11,3 +11,6 @@ out/
 
 # Node dependencies
 node_modules/
+
+# Data
+data/StockEtablissement_utf8.csv
