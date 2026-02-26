@@ -15,6 +15,7 @@ export default function SavedAreas({
 }) {
   const [savedAreas, setSavedAreas] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const user = auth.currentUser
 
   useEffect(() => {
@@ -31,9 +32,9 @@ export default function SavedAreas({
     }
   }, [user])
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleDeleteConfirm = async (id: string) => {
     await deleteDoc(doc(db, 'savedAreas', id))
+    setPendingDeleteId(null)
   }
 
   const handleSave = async () => {
@@ -95,24 +96,44 @@ export default function SavedAreas({
               key={area.id}
               className={`group flex items-center gap-1 rounded-md transition-colors ${t.item}`}
             >
-              <button
-                onClick={() => {
-                  const geo = area.geometryJson ? JSON.parse(area.geometryJson) : area.geometry
-                  onSelectArea(geo)
-                }}
-                className="flex-1 text-left text-sm px-2.5 py-1.5 min-w-0 truncate"
-              >
-                {area.name}
-              </button>
-              <button
-                onClick={(e) => handleDelete(area.id, e)}
-                className={`flex-shrink-0 w-6 h-6 mr-1 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all ${t.deleteBtn}`}
-                title="Delete area"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              {pendingDeleteId === area.id ? (
+                <div className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5">
+                  <span className={`text-xs flex-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Delete &ldquo;{area.name}&rdquo;?</span>
+                  <button
+                    onClick={() => handleDeleteConfirm(area.id)}
+                    className="text-[11px] font-semibold text-red-400 hover:text-red-300 transition-colors px-1.5 py-0.5 rounded"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setPendingDeleteId(null)}
+                    className={`text-[11px] font-medium transition-colors px-1.5 py-0.5 rounded ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      const geo = area.geometryJson ? JSON.parse(area.geometryJson) : area.geometry
+                      onSelectArea(geo)
+                    }}
+                    className="flex-1 text-left text-sm px-2.5 py-1.5 min-w-0 truncate"
+                  >
+                    {area.name}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setPendingDeleteId(area.id) }}
+                    className={`flex-shrink-0 w-6 h-6 mr-1 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all ${t.deleteBtn}`}
+                    title="Delete area"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
           ))}
           <button

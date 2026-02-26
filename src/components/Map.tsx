@@ -27,7 +27,7 @@ const selectedIcon = new L.Icon({
   shadowSize: [62, 62],
 });
 
-function SelectedMarkerPopup({ selectedCompany }: { selectedCompany: any }) {
+function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand }: { selectedCompany: any; popupColumns: string[]; onExpand: (company: any) => void }) {
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
 
@@ -51,8 +51,21 @@ function SelectedMarkerPopup({ selectedCompany }: { selectedCompany: any }) {
     >
       <Popup>
         <div className="min-w-[180px]">
-          <p className="font-semibold text-sm leading-tight">{selectedCompany.name}</p>
-          <p className="text-xs text-gray-400 mt-1">{selectedCompany.postalCode} {selectedCompany.city}</p>
+          {popupColumns.length === 0 ? (
+            <p className="text-xs italic text-gray-400">No columns selected</p>
+          ) : (
+            popupColumns.map((col, i) => {
+              const val = selectedCompany.fields?.[col] ?? ''
+              if (i === 0) return <p key={col} className="font-semibold text-sm leading-tight">{val || '—'}</p>
+              return <p key={col} className="text-xs text-gray-400 mt-0.5">{col}: {val}</p>
+            })
+          )}
+          <button
+            onClick={() => onExpand(selectedCompany)}
+            className="mt-2 w-full text-center text-[11px] font-medium text-blue-600 hover:text-blue-500 transition-colors"
+          >
+            View details →
+          </button>
         </div>
       </Popup>
     </Marker>
@@ -74,17 +87,21 @@ export default function Map({
   selectedCompany,
   onSearch,
   onCompanySelect,
+  onExpand,
   isDark,
   mapStyle,
   userLocation,
+  popupColumns,
 }: {
   companies: any[]
   selectedCompany: any
   onSearch: (geometry: any) => void
   onCompanySelect: (company: any) => void
+  onExpand: (company: any) => void
   isDark: boolean
   mapStyle: 'themed' | 'default'
   userLocation: [number, number] | null
+  popupColumns: string[]
 }) {
   const featureGroupRef = useRef<L.FeatureGroup | null>(null)
 
@@ -178,12 +195,13 @@ export default function Map({
           }}
         />
       </FeatureGroup>
-      {companies.map((company) => {
-        const isSelected = selectedCompany?.siret === company.siret
+      {companies.map((company, idx) => {
+        const companyId = company.fields?.siret || `row-${idx}`
+        const isSelected = selectedCompany && (selectedCompany.fields?.siret === company.fields?.siret)
         if (isSelected) return null
         return (
           <Marker
-            key={company.siret}
+            key={companyId}
             position={[company.lat, company.lon]}
             icon={defaultIcon}
             eventHandlers={{
@@ -192,14 +210,27 @@ export default function Map({
           >
             <Popup>
               <div className="min-w-[160px]">
-                <p className="font-semibold text-sm leading-tight">{company.name}</p>
-                <p className="text-xs text-gray-400 mt-1">{company.postalCode} {company.city}</p>
+                {popupColumns.length === 0 ? (
+                  <p className="text-xs italic text-gray-400">No columns selected</p>
+                ) : (
+                  popupColumns.map((col, i) => {
+                    const val = company.fields?.[col] ?? ''
+                    if (i === 0) return <p key={col} className="font-semibold text-sm leading-tight">{val || '—'}</p>
+                    return <p key={col} className="text-xs text-gray-400 mt-0.5">{col}: {val}</p>
+                  })
+                )}
+                <button
+                  onClick={() => onExpand(company)}
+                  className="mt-2 w-full text-center text-[11px] font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                >
+                  View details →
+                </button>
               </div>
             </Popup>
           </Marker>
         )
       })}
-      <SelectedMarkerPopup selectedCompany={selectedCompany} />
+      <SelectedMarkerPopup selectedCompany={selectedCompany} popupColumns={popupColumns} onExpand={onExpand} />
       <LocationUpdater userLocation={userLocation} />
     </MapContainer>
   )

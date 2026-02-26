@@ -14,27 +14,28 @@ proj4.defs(
 );
 
 interface Company {
-  siret: string;
-  siren: string;
-  name: string;
-  nafCode: string;
-  postalCode: string;
-  city: string;
   lat: number;
   lon: number;
-  isHeadOffice: boolean;
-  isActive: boolean;
+  fields: Record<string, string>;
 }
 
-// Cache parsed & projected companies across requests
+// Cache parsed & projected companies and columns across requests
 let companiesCache: Company[] | null = null;
+let columnsCache: string[] | null = null;
 
-function loadCompanies(): Company[] {
-  if (companiesCache) return companiesCache;
+function loadCompanies(): { companies: Company[]; columns: string[] } {
+  if (companiesCache && columnsCache) return { companies: companiesCache, columns: columnsCache };
 
   const csvPath = path.join(process.cwd(), 'data', 'sample.csv');
   const content = fs.readFileSync(csvPath, 'utf-8');
   const records = parse(content, { columns: true, skip_empty_lines: true });
+
+  // Extract column names from the first record
+  if (records.length > 0) {
+    columnsCache = Object.keys(records[0]);
+  } else {
+    columnsCache = [];
+  }
 
   companiesCache = (records as any[])
     .filter(
@@ -52,23 +53,33 @@ function loadCompanies(): Company[] {
       }
       
       const [lon, lat] = proj4('EPSG:2154', 'WGS84', [x, y]);
-      return {
-        siret: r.siret,
-        siren: r.siren,
-        name: r.denominationUsuelleEtablissement || r.siret,
-        nafCode: r.activitePrincipaleEtablissement,
-        postalCode: r.codePostalEtablissement,
-        city: r.libelleCommuneEtablissement,
-        lat,
-        lon,
-        isHeadOffice: r.etablissementSiege === 'True',
-        isActive: r.etatAdministratifEtablissement === 'A',
-      };
+
+      // Preserve all raw fields
+      const fields: Record<string, string> = {};
+      for (const key of columnsCache!) {
+        fields[key] = r[key] ?? '';
+      }
+
+      return { lat, lon, fields };
     })
     .filter(Boolean) as Company[];
 
-  console.log(`Loaded ${companiesCache.length} companies from CSV.`);
-  return companiesCache;
+  console.log(`Loaded ${companiesCache.length} companies with ${columnsCache.length} columns from CSV.`);
+  return { companies: companiesCache, columns: columnsCache };
+}
+
+// GET: return just column names (called on page load)
+export async function GET() {
+  try {
+    const { columns } = loadCompanies();
+    return NextResponse.json({ columns });
+  } catch (error) {
+    console.error('Columns API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to read columns', details: String(error) },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -87,7 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const allCompanies = loadCompanies();
+    const { companies: allCompanies, columns } = loadCompanies();
 
     const companies = allCompanies.filter((company) => {
       const pt = point([company.lon, company.lat]);
@@ -95,7 +106,7 @@ export async function POST(req: NextRequest) {
     });
 
     console.log(`Found ${companies.length} companies in the drawn area.`);
-    return NextResponse.json({ companies });
+    return NextResponse.json({ companies, columns });
   } catch (error) {
     console.error('Search API error:', error);
     return NextResponse.json(
