@@ -7,10 +7,10 @@ import SavedAreas from '@/components/SavedAreas'
 import SearchBar from '@/components/SearchBar'
 import AuthModal from '@/components/AuthModal'
 import CompanyDetail from '@/components/CompanyDetail'
-import { auth } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { signOut } from 'firebase/auth'
-
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
 const HIDDEN_COLS = ['coordonneeLambertAbscisseEtablissement', 'coordonneeLambertOrdonneeEtablissement']
@@ -31,6 +31,10 @@ export default function Home() {
   const [expandedCompany, setExpandedCompany] = useState<any>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
   const isSigningIn = useRef(false)
+  const profileLoaded = useRef(false)
+  const [prefsSaved, setPrefsSaved] = useState(false)
+
+  const prefsKey = (uid: string) => `prefs_${uid}`
 
   // Column system
   const [columns, setColumns] = useState<string[]>([])
@@ -45,6 +49,56 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [filters, setFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'not_empty'; value: string }[]>([])
+
+  // Load preferences: Firestore first (source of truth), localStorage as fallback/cache
+  useEffect(() => {
+    if (!user) { profileLoaded.current = false; return }
+    const key = prefsKey(user.uid)
+    // Apply localStorage immediately so there's no flash of default settings
+    try {
+      const cached = localStorage.getItem(key)
+      if (cached) {
+        const p = JSON.parse(cached)
+        if (Array.isArray(p.listColumns) && p.listColumns.length > 0) setListColumns(p.listColumns)
+        if (Array.isArray(p.popupColumns) && p.popupColumns.length > 0) setPopupColumns(p.popupColumns)
+        if (p.mapStyle) setMapStyle(p.mapStyle)
+        if (typeof p.isDark === 'boolean') setIsDark(p.isDark)
+      }
+    } catch (_) {}
+    // Then fetch from Firestore and override (handles cross-device sync)
+    getDoc(doc(db, 'userProfiles', user.uid))
+      .then((snap) => {
+        if (snap.exists()) {
+          const p = snap.data()
+          if (Array.isArray(p.listColumns) && p.listColumns.length > 0) setListColumns(p.listColumns)
+          if (Array.isArray(p.popupColumns) && p.popupColumns.length > 0) setPopupColumns(p.popupColumns)
+          if (p.mapStyle) setMapStyle(p.mapStyle)
+          if (typeof p.isDark === 'boolean') setIsDark(p.isDark)
+          // Keep localStorage in sync with remote
+          try { localStorage.setItem(key, JSON.stringify(p)) } catch (_) {}
+        }
+        profileLoaded.current = true
+      })
+      .catch((e) => {
+        console.warn('Firestore prefs load failed, using local cache:', e)
+        profileLoaded.current = true
+      })
+  }, [user])
+
+  // Auto-save preferences: localStorage immediately, Firestore debounced
+  useEffect(() => {
+    if (!user || !profileLoaded.current) return
+    const prefs = { listColumns, popupColumns, mapStyle, isDark }
+    // Write to localStorage immediately (instant, no latency)
+    try { localStorage.setItem(prefsKey(user.uid), JSON.stringify(prefs)) } catch (_) {}
+    // Debounce Firestore write
+    const timer = setTimeout(() => {
+      setDoc(doc(db, 'userProfiles', user.uid), prefs, { merge: true })
+        .then(() => { setPrefsSaved(true); setTimeout(() => setPrefsSaved(false), 2000) })
+        .catch((e) => console.warn('Firestore prefs save failed:', e))
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [user, listColumns, popupColumns, mapStyle, isDark])
 
   // Fetch columns on mount
   useEffect(() => {
@@ -322,15 +376,31 @@ export default function Home() {
                             )}
                           </button>
                         ))}
+                        {user && (
+                          <div className={`mx-3 mt-2 mb-1 flex items-center justify-end h-5`}>
+                            {prefsSaved && (
+                              <span className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                Preferences saved
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {/* List / Popup column tabs */}
                     {(settingsTab === 'list' || settingsTab === 'popup') && (
                       <div>
-                        <div className="flex gap-3 px-3 pt-2">
+                        <div className="flex gap-3 px-3 pt-2 pb-1 items-center">
                           <button onClick={() => activeColSetter([...displayColumns])} className={`text-[10px] font-medium ${d.allBtn}`}>All</button>
                           <button onClick={() => activeColSetter([])} className={`text-[10px] font-medium ${d.allBtn}`}>None</button>
+                          <button
+                            onClick={() => activeColSetter(settingsTab === 'list' ? DEFAULT_LIST_COLS.filter(c => displayColumns.includes(c)) : DEFAULT_POPUP_COLS.filter(c => displayColumns.includes(c)))}
+                            className={`text-[10px] font-medium ml-auto ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
+                          >
+                            Restore defaults
+                          </button>
                         </div>
                         <div className="max-h-[280px] overflow-y-auto px-1.5 py-1">
                           {displayColumns.map((col) => {
@@ -409,10 +479,22 @@ export default function Home() {
           )}
         </div>
 
-        {/* Saved Areas */}
+        {/* Saved Searches */}
         {user && (
           <div className={`px-5 py-3 border-b ${d.savedAreasBorder}`}>
-            <SavedAreas onSelectArea={handleSearch} currentSearchArea={searchArea} isDark={isDark} />
+            <SavedAreas
+              onRestoreSearch={(geo, restoredFilters, restoredSortBy, restoredSortDir) => {
+                handleSearch(geo)
+                setFilters(restoredFilters)
+                setSortBy(restoredSortBy)
+                setSortDir(restoredSortDir)
+              }}
+              currentSearchArea={searchArea}
+              currentFilters={filters}
+              currentSortBy={sortBy}
+              currentSortDir={sortDir}
+              isDark={isDark}
+            />
           </div>
         )}
 

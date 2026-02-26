@@ -4,13 +4,25 @@ import { useState, useEffect } from 'react'
 import { collection, addDoc, onSnapshot, query, where, deleteDoc, doc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 
+interface Filter {
+  column: string
+  operator: 'contains' | 'equals' | 'not_empty'
+  value: string
+}
+
 export default function SavedAreas({
-  onSelectArea,
+  onRestoreSearch,
   currentSearchArea,
+  currentFilters,
+  currentSortBy,
+  currentSortDir,
   isDark,
 }: {
-  onSelectArea: (geometry: any) => void
+  onRestoreSearch: (geometry: any, filters: Filter[], sortBy: string | null, sortDir: 'asc' | 'desc') => void
   currentSearchArea: any
+  currentFilters: Filter[]
+  currentSortBy: string | null
+  currentSortDir: 'asc' | 'desc'
   isDark: boolean
 }) {
   const [savedAreas, setSavedAreas] = useState<any[]>([])
@@ -39,12 +51,15 @@ export default function SavedAreas({
 
   const handleSave = async () => {
     if (user && currentSearchArea) {
-      const areaName = prompt('Enter a name for this area:')
-      if (areaName) {
+      const searchName = prompt('Enter a name for this search:')
+      if (searchName) {
         await addDoc(collection(db, 'savedAreas'), {
-          name: areaName,
+          name: searchName,
           userId: user.uid,
           geometryJson: JSON.stringify(currentSearchArea),
+          filtersJson: JSON.stringify(currentFilters),
+          sortBy: currentSortBy ?? null,
+          sortDir: currentSortDir,
           timestamp: new Date(),
         })
       }
@@ -71,25 +86,41 @@ export default function SavedAreas({
 
   return (
     <div>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between text-xs font-semibold uppercase tracking-wider transition-colors py-1 ${t.label}`}
-      >
-        <span>Saved Areas</span>
-        <svg
-          className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <div className="flex items-center justify-between py-1">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.label}`}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          <span>Saved Searches</span>
+          <svg
+            className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        <div className="relative group/info">
+          <svg
+            className={`w-3.5 h-3.5 cursor-default ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className={`pointer-events-none absolute right-0 bottom-full mb-2 w-52 rounded-lg border px-3 py-2 text-[11px] leading-relaxed shadow-xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50 ${
+            isDark ? 'bg-gray-800 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-600'
+          }`}>
+            Saves the current map area along with any active filters and sort settings, so you can restore the exact same search later.
+          </div>
+        </div>
+      </div>
 
       {isOpen && (
         <div className="mt-2 space-y-1">
           {savedAreas.length === 0 && (
-            <p className={`text-xs py-2 ${t.emptyText}`}>No saved areas yet.</p>
+            <p className={`text-xs py-2 ${t.emptyText}`}>No saved searches yet.</p>
           )}
           {savedAreas.map((area) => (
             <div
@@ -117,7 +148,10 @@ export default function SavedAreas({
                   <button
                     onClick={() => {
                       const geo = area.geometryJson ? JSON.parse(area.geometryJson) : area.geometry
-                      onSelectArea(geo)
+                      const filters: Filter[] = area.filtersJson ? JSON.parse(area.filtersJson) : []
+                      const sortBy: string | null = area.sortBy ?? null
+                      const sortDir: 'asc' | 'desc' = area.sortDir ?? 'asc'
+                      onRestoreSearch(geo, filters, sortBy, sortDir)
                     }}
                     className="flex-1 text-left text-sm px-2.5 py-1.5 min-w-0 truncate"
                   >
@@ -140,7 +174,7 @@ export default function SavedAreas({
             onClick={handleSave}
             className={`w-full mt-2 text-xs font-medium border rounded-lg px-3 py-2 transition-colors ${t.saveBtn}`}
           >
-            + Save Current Area
+            + Save Current Search
           </button>
         </div>
       )}
