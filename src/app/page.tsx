@@ -13,14 +13,15 @@ import { signOut } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
-const HIDDEN_COLS = ['coordonneeLambertAbscisseEtablissement', 'coordonneeLambertOrdonneeEtablissement']
-const DEFAULT_LIST_COLS = ['denominationUsuelleEtablissement', 'codePostalEtablissement', 'libelleCommuneEtablissement']
-const DEFAULT_POPUP_COLS = ['denominationUsuelleEtablissement', 'siret', 'codePostalEtablissement', 'libelleCommuneEtablissement']
+const HIDDEN_COLS = ['Géolocalisation de l\'établissement']
+const DEFAULT_LIST_COLS = ['Dénomination usuelle de l\'établissement', 'Code postal de l\'établissement', 'Commune de l\'établissement']
+const DEFAULT_POPUP_COLS = ['Dénomination usuelle de l\'établissement', 'SIRET', 'Code postal de l\'établissement', 'Commune de l\'établissement']
 
 export default function Home() {
   const [companies, setCompanies] = useState([])
   const [selectedCompany, setSelectedCompany] = useState(null)
   const [searchArea, setSearchArea] = useState(null)
+  const [activeSearchId, setActiveSearchId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isDark, setIsDark] = useState(true)
   const [mapStyle, setMapStyle] = useState<'themed' | 'default'>('themed')
@@ -143,6 +144,7 @@ export default function Home() {
       setCompanies([])
       setSearchArea(null)
       setSelectedCompany(null)
+      setActiveSearchId(null)
       return
     }
     if (!geometry.coordinates || !Array.isArray(geometry.coordinates)) {
@@ -165,6 +167,7 @@ export default function Home() {
       setCompanies(data.companies)
       setSearchArea(geometry)
       setSelectedCompany(null)
+      setActiveSearchId(null) // cleared when drawing a new shape manually
       if (data.columns && columns.length === 0) {
         setColumns(data.columns)
         const display = data.columns.filter((c: string) => !HIDDEN_COLS.includes(c))
@@ -483,12 +486,15 @@ export default function Home() {
         {user && (
           <div className={`px-5 py-3 border-b ${d.savedAreasBorder}`}>
             <SavedAreas
-              onRestoreSearch={(geo, restoredFilters, restoredSortBy, restoredSortDir) => {
+              onRestoreSearch={(geo, restoredFilters, restoredSortBy, restoredSortDir, id) => {
                 handleSearch(geo)
                 setFilters(restoredFilters)
                 setSortBy(restoredSortBy)
                 setSortDir(restoredSortDir)
+                setActiveSearchId(id)
               }}
+              onDeleteCurrentSearch={() => handleSearch(null)}
+              activeSearchId={activeSearchId}
               currentSearchArea={searchArea}
               currentFilters={filters}
               currentSortBy={sortBy}

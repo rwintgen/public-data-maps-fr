@@ -16,13 +16,17 @@ export default function SavedAreas({
   currentFilters,
   currentSortBy,
   currentSortDir,
+  onDeleteCurrentSearch,
+  activeSearchId,
   isDark,
 }: {
-  onRestoreSearch: (geometry: any, filters: Filter[], sortBy: string | null, sortDir: 'asc' | 'desc') => void
+  onRestoreSearch: (geometry: any, filters: Filter[], sortBy: string | null, sortDir: 'asc' | 'desc', id: string) => void
   currentSearchArea: any
   currentFilters: Filter[]
   currentSortBy: string | null
   currentSortDir: 'asc' | 'desc'
+  onDeleteCurrentSearch: () => void
+  activeSearchId: string | null
   isDark: boolean
 }) {
   const [savedAreas, setSavedAreas] = useState<any[]>([])
@@ -44,8 +48,11 @@ export default function SavedAreas({
     }
   }, [user])
 
-  const handleDeleteConfirm = async (id: string) => {
-    await deleteDoc(doc(db, 'savedAreas', id))
+  const handleDeleteConfirm = async (area: any) => {
+    if (area.id === activeSearchId) {
+      onDeleteCurrentSearch()
+    }
+    await deleteDoc(doc(db, 'savedAreas', area.id))
     setPendingDeleteId(null)
   }
 
@@ -131,7 +138,7 @@ export default function SavedAreas({
                 <div className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5">
                   <span className={`text-xs flex-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Delete &ldquo;{area.name}&rdquo;?</span>
                   <button
-                    onClick={() => handleDeleteConfirm(area.id)}
+                    onClick={() => handleDeleteConfirm(area)}
                     className="text-[11px] font-semibold text-red-400 hover:text-red-300 transition-colors px-1.5 py-0.5 rounded"
                   >
                     Delete
@@ -151,7 +158,7 @@ export default function SavedAreas({
                       const filters: Filter[] = area.filtersJson ? JSON.parse(area.filtersJson) : []
                       const sortBy: string | null = area.sortBy ?? null
                       const sortDir: 'asc' | 'desc' = area.sortDir ?? 'asc'
-                      onRestoreSearch(geo, filters, sortBy, sortDir)
+                      onRestoreSearch(geo, filters, sortBy, sortDir, area.id)
                     }}
                     className="flex-1 text-left text-sm px-2.5 py-1.5 min-w-0 truncate"
                   >

@@ -53,7 +53,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div className="min-w-0 flex-1 pr-4">
             <h2 className={`text-base font-semibold leading-tight ${t.title}`}>
-              {fields.denominationUsuelleEtablissement || fields.siret || 'Company Details'}
+              {fields["D\u00e9nomination usuelle de l'\u00e9tablissement"] || fields["D\u00e9nomination de l'unit\u00e9 l\u00e9gale"] || fields.SIRET || 'Company Details'}
             </h2>
             {company.lat && company.lon && (
               <p className={`text-[10px] mt-1 font-mono ${t.coords}`}>

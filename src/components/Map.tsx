@@ -196,8 +196,8 @@ export default function Map({
         />
       </FeatureGroup>
       {companies.map((company, idx) => {
-        const companyId = company.fields?.siret || `row-${idx}`
-        const isSelected = selectedCompany && (selectedCompany.fields?.siret === company.fields?.siret)
+        const companyId = company.fields?.SIRET || `row-${idx}`
+        const isSelected = selectedCompany && (selectedCompany.fields?.SIRET === company.fields?.SIRET)
         if (isSelected) return null
         return (
           <Marker

@@ -3,15 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
-import proj4 from 'proj4';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point } from '@turf/helpers';
 
-// Lambert 93 (EPSG:2154) projection definition
-proj4.defs(
-  'EPSG:2154',
-  '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
-);
+// Geo column name in the CSV
+const GEO_COL = 'Géolocalisation de l\'établissement';
 
 interface Company {
   lat: number;
@@ -26,7 +22,7 @@ let columnsCache: string[] | null = null;
 function loadCompanies(): { companies: Company[]; columns: string[] } {
   if (companiesCache && columnsCache) return { companies: companiesCache, columns: columnsCache };
 
-  const csvPath = path.join(process.cwd(), 'data', 'sample.csv');
+  const csvPath = path.join(process.cwd(), 'data', 'economicref-france-sirene-v3-sample.csv');
   const content = fs.readFileSync(csvPath, 'utf-8');
   const records = parse(content, { columns: true, skip_empty_lines: true });
 
@@ -38,21 +34,15 @@ function loadCompanies(): { companies: Company[]; columns: string[] } {
   }
 
   companiesCache = (records as any[])
-    .filter(
-      (r) =>
-        r.coordonneeLambertAbscisseEtablissement &&
-        r.coordonneeLambertOrdonneeEtablissement
-    )
+    .filter((r) => r[GEO_COL] && r[GEO_COL].trim() !== '')
     .map((r) => {
-      const x = parseFloat(r.coordonneeLambertAbscisseEtablissement);
-      const y = parseFloat(r.coordonneeLambertOrdonneeEtablissement);
-      
+      const parts = r[GEO_COL].split(',')
+      if (parts.length < 2) return null;
+      const lat = parseFloat(parts[0].trim());
+      const lon = parseFloat(parts[1].trim());
+
       // Skip invalid coordinates
-      if (!isFinite(x) || !isFinite(y)) {
-        return null;
-      }
-      
-      const [lon, lat] = proj4('EPSG:2154', 'WGS84', [x, y]);
+      if (!isFinite(lat) || !isFinite(lon)) return null;
 
       // Preserve all raw fields
       const fields: Record<string, string> = {};

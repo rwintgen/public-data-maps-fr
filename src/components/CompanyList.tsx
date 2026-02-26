@@ -275,8 +275,8 @@ export default function CompanyList({
 
       <ul className="flex-1 space-y-1 overflow-y-auto">
         {paginatedCompanies.map((company, idx) => {
-          const companyId = company.fields?.siret || `row-${idx}`
-          const isSelected = selectedCompany && (selectedCompany.fields?.siret === company.fields?.siret)
+          const companyId = company.fields?.SIRET || `row-${idx}`
+          const isSelected = selectedCompany && (selectedCompany.fields?.SIRET === company.fields?.SIRET)
           return (
             <li
               key={companyId}
