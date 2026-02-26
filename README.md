@@ -1,3 +1,5 @@
+![Public Data Maps](./public/logo-full.png)
+
 # Public Data Maps (France)
 
 This is a full-stack web app that allows users to draw a custom area on a map of France and get a list of all company headquarters located inside that area. This project is open source and we welcome contributions!
