@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- can dynamically display any column without schema changes.
 CREATE TABLE IF NOT EXISTS establishments (
   id       SERIAL PRIMARY KEY,
-  siret    VARCHAR(14),
+  siret    VARCHAR(14) UNIQUE,
   lat      DOUBLE PRECISION NOT NULL,
   lon      DOUBLE PRECISION NOT NULL,
   geom     GEOMETRY(Point, 4326) NOT NULL,
