@@ -2,7 +2,7 @@
 
 # Public Data Maps (France)
 
-A full-stack web app to draw a custom area on a map of France and instantly retrieve a list of company establishments within that area, using the open SIRENE v3 dataset. Built with Next.js, Firebase, and Leaflet.
+A full-stack web app to draw a custom area on a map of France and instantly retrieve a list of company establishments within that area, using the public data. Built with Next.js, Firebase, and Leaflet.
 
 ## Features
 
