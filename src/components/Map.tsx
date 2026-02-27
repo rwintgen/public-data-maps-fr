@@ -11,23 +11,17 @@ const FRANCE_ZOOM = 6
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
 const defaultIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [20, 33],
-  iconAnchor: [10, 33],
-  popupAnchor: [1, -28],
-  shadowSize: [33, 33],
+  iconUrl: '/map-pin.png',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -16],
 });
 
 const selectedIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [38, 62],
-  iconAnchor: [19, 62],
-  popupAnchor: [1, -52],
-  shadowSize: [62, 62],
+  iconUrl: '/map-pin.png',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -22],
 });
 
 /** Renders and auto-zooms a larger marker with a popup for the selected company. */
@@ -197,7 +191,7 @@ export default function Map({
   }, [onSearch])
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" data-mapstyle={mapStyle}>
       <MapContainer
         center={FRANCE_CENTER}
         zoom={FRANCE_ZOOM}

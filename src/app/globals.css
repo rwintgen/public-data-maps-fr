@@ -154,6 +154,19 @@ html, body {
   display: none !important;
 }
 
+/* Invert marker icons in dark mode (themed style) */
+[data-theme=dark] .leaflet-marker-icon {
+  filter: invert(1);
+}
+/* Default style: always black regardless of theme */
+[data-mapstyle=default] .leaflet-marker-icon {
+  filter: none;
+}
+/* Satellite style: always white regardless of theme */
+[data-mapstyle=satellite] .leaflet-marker-icon {
+  filter: invert(1);
+}
+
 /* === AI button: animated shimmer overlay === */
 .ai-shimmer-btn {
   position: relative;
