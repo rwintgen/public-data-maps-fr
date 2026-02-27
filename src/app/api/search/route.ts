@@ -28,7 +28,7 @@ function loadCompanies(): { companies: Company[]; columns: string[] } {
 
   // Extract column names from the first record
   if (records.length > 0) {
-    columnsCache = Object.keys(records[0]);
+    columnsCache = Object.keys(records[0] as Record<string, unknown>);
   } else {
     columnsCache = [];
   }
