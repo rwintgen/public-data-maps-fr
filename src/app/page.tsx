@@ -25,7 +25,7 @@ export default function Home() {
   const [activeSearchId, setActiveSearchId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isDark, setIsDark] = useState(true)
-  const [mapStyle, setMapStyle] = useState<'themed' | 'default' | 'satellite' | 'terrain' | 'watercolor'>('themed')
+  const [mapStyle, setMapStyle] = useState<'default' | 'themed' | 'satellite'>('default')
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [user] = useAuthState(auth)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -304,7 +304,7 @@ export default function Home() {
           onExpand={handleExpand}
           onLocate={handleLocate}
           isDark={isDark}
-          mapStyle={mapStyle as any}
+          mapStyle={mapStyle}
           userLocation={userLocation}
           popupColumns={popupColumns}
         />
@@ -356,8 +356,8 @@ export default function Home() {
                     {settingsTab === 'general' && (
                       <div className="py-1">
                         <div className={`px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest ${d.dropdownLabel}`}>Map Style</div>
-                        {(['themed', 'default', 'satellite', 'terrain', 'watercolor'] as const).map((style) => {
-                          const labels: Record<string, string> = { themed: 'Themed', default: 'Default', satellite: 'Satellite', terrain: 'Terrain', watercolor: 'Watercolor' }
+                        {(['default', 'themed', 'satellite'] as const).map((style) => {
+                          const labels: Record<string, string> = { default: 'Default', themed: 'Themed', satellite: 'Satellite' }
                           return (
                             <button
                               key={style}

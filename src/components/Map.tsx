@@ -109,7 +109,7 @@ export default function Map({
   onExpand: (company: any) => void
   onLocate: () => void
   isDark: boolean
-  mapStyle: 'themed' | 'default' | 'satellite' | 'terrain' | 'watercolor'
+  mapStyle: 'default' | 'themed' | 'satellite'
   userLocation: [number, number] | null
   popupColumns: string[]
 }) {
@@ -163,10 +163,6 @@ export default function Map({
         attribution={
           mapStyle === 'satellite'
             ? '&copy; <a href="https://www.esri.com/">Esri</a>'
-            : mapStyle === 'watercolor'
-            ? '&copy; <a href="https://stamen.com/">Stamen</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-            : mapStyle === 'terrain'
-            ? '&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
             : '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
         }
         url={
@@ -174,15 +170,11 @@ export default function Map({
             ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
             : mapStyle === 'satellite'
             ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-            : mapStyle === 'terrain'
-            ? 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}{r}.png'
-            : mapStyle === 'watercolor'
-            ? 'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg'
             : isDark
             ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
             : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
         }
-        maxZoom={mapStyle === 'watercolor' ? 16 : 19}
+        maxZoom={19}
       />
       <FeatureGroup ref={featureGroupRef}>
         <EditControl
