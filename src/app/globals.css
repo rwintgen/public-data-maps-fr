@@ -227,7 +227,17 @@ html, body {
   transition-delay: 0.6s;
 }
 
-/* Zoom buttons are top-left — show tooltip on the right instead */
+/* Draw toolbar buttons are top-right — show tooltip below */
+.leaflet-draw-toolbar a[title]::after {
+  right: auto;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%) translateY(-2px);
+}
+.leaflet-draw-toolbar a[title]:hover::after {
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 0.6s;
+}
 .leaflet-control-zoom a[title]::after {
   right: auto;
   left: calc(100% + 6px);
