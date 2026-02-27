@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:setup": "psql $DATABASE_URL -f scripts/setup-db.sql",
+    "db:import": "node scripts/import-sirene.js"
   },
   "dependencies": {
+    "@google-cloud/cloud-sql-connector": "^1.9.1",
     "@turf/boolean-point-in-polygon": "^7.3.4",
     "@turf/helpers": "^7.3.4",
     "@types/proj4": "^2.5.6",
@@ -17,6 +20,7 @@
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "next": "^14.2.35",
+    "pg": "^8.19.0",
     "proj4": "^2.20.2",
     "react": "^18",
     "react-dom": "^18",
@@ -27,6 +31,7 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.8",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
