@@ -149,6 +149,37 @@ html, body {
   background-size: 300px 30px !important;
 }
 
+/* Hide Leaflet attribution */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* === AI button: animated shimmer overlay === */
+.ai-shimmer-btn {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  background: transparent;
+  transition: border-color 0.2s ease;
+}
+.ai-shimmer-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(139, 92, 246, 0.15) 50%, transparent 70%);
+  background-size: 200% 100%;
+  background-position: 200% center;
+  transition: background-position 0s;
+}
+.ai-shimmer-btn:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+}
+.ai-shimmer-btn:hover::before {
+  background-position: -200% center;
+  transition: background-position 0.7s ease;
+}
+
 /* === Tooltip on Leaflet control buttons (title attribute) === */
 .leaflet-bar a[title],
 .leaflet-draw-toolbar a[title] {
@@ -181,6 +212,19 @@ html, body {
   opacity: 1;
   transform: translateY(-50%) translateX(0);
   transition-delay: 0.6s;
+}
+
+/* Zoom buttons are top-left — show tooltip on the right instead */
+.leaflet-control-zoom a[title]::after {
+  right: auto;
+  left: calc(100% + 6px);
+  transform: translateY(-50%) translateX(-2px);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+.leaflet-control-zoom a[title]:hover::after {
+  transform: translateY(-50%) translateX(0);
 }
 [data-theme=light] ::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.12);

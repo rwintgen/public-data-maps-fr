@@ -30,8 +30,8 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         emptyValue: 'text-gray-700 italic',
         divider: 'border-white/5',
         coords: 'text-gray-600',
-        aiBtn: 'bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-500 hover:to-purple-300 text-white shadow-lg shadow-purple-500/20',
-        aiIcon: 'text-purple-200',
+        aiBtn: 'ai-shimmer-btn text-gray-200',
+        aiIcon: 'text-gray-400',
       }
     : {
         overlay: 'bg-black/30',
@@ -43,8 +43,8 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         emptyValue: 'text-gray-300 italic',
         divider: 'border-gray-100',
         coords: 'text-gray-400',
-        aiBtn: 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg shadow-purple-500/20',
-        aiIcon: 'text-purple-200',
+        aiBtn: 'ai-shimmer-btn text-gray-700',
+        aiIcon: 'text-gray-400',
       }
 
   return (

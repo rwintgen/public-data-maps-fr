@@ -64,12 +64,13 @@ function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand }: { sele
               return <p key={col} className="text-xs text-gray-400 mt-0.5">{col}: {val}</p>
             })
           )}
-          <button
-            onClick={() => onExpand(selectedCompany)}
-            className="mt-2 w-full text-center text-[11px] font-medium text-blue-600 hover:text-blue-500 transition-colors"
-          >
-            View details →
-          </button>
+                <button
+                  onClick={() => onExpand(selectedCompany)}
+                  className="mt-3 w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-1.5 transition-colors"
+                >
+                  View details
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                </button>
         </div>
       </Popup>
     </Marker>
@@ -285,9 +286,10 @@ export default function Map({
                 )}
                 <button
                   onClick={() => onExpand(company)}
-                  className="mt-2 w-full text-center text-[11px] font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                  className="mt-3 w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-1.5 transition-colors"
                 >
-                  View details →
+                  View details
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                 </button>
               </div>
             </Popup>
@@ -300,22 +302,18 @@ export default function Map({
       <ResizeWatcher />
     </MapContainer>
 
-    {/* Sidebar toggle — right edge, vertically centered */}
+    {/* Sidebar toggle — right edge, vertically centered, styled as map button */}
     <button
       onClick={onToggleSidebar}
-      style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 1100 }}
-      className={`w-5 h-14 rounded-l-lg flex items-center justify-center transition-colors duration-200 ${
-        isDark
-          ? 'bg-gray-900 text-gray-500 hover:text-white'
-          : 'bg-white text-gray-400 hover:text-gray-900'
-      }`}
+      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 1100 }}
+      className="w-8 h-16 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 shadow-md flex items-center justify-center transition-colors"
       data-tooltip={sidebarOpen ? 'Hide panel' : 'Show panel'} data-tooltip-pos="left"
     >
       <svg
-        className={`w-3 h-3 transition-transform duration-300 ${sidebarOpen ? 'rotate-0' : 'rotate-180'}`}
+        className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${sidebarOpen ? 'rotate-0' : 'rotate-180'}`}
         fill="none" stroke="currentColor" viewBox="0 0 24 24"
       >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
       </svg>
     </button>
 
