@@ -1,5 +1,5 @@
 # Firebase credentials
-src/lib/firebase.ts
+# src/lib/firebase.ts  # config values are safe to expose; security is via Firestore rules
 
 # Firebase App Hosting config
 apphosting.yaml
