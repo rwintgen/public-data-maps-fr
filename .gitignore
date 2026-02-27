@@ -17,3 +17,6 @@ data/StockEtablissement_utf8.csv
 
 # Build
 tsconfig.tsbuildinfo
+
+# Others
+cloud-sql-proxy
