@@ -17,6 +17,7 @@ A full-stack web app to draw a custom area on a map of France and instantly retr
 - **Saved searches** — sign in to save, restore, rename, and delete named searches (persisted in Firestore)
 - **Map styles** — Default (OpenStreetMap), Themed (CartoCDN light/dark), Satellite (Esri)
 - **Dark / Light theme** — persisted per-user in Firestore with localStorage cache for instant restore
+- **Collapsible sidebar** — toggle the sidebar to reveal a full-screen map; smooth CSS transition
 - **Geocoding** — search for any location in France (Nominatim) to pan the map
 - **Geolocate** — jump to your current GPS position
 

@@ -30,6 +30,20 @@ A Next.js 14 (App Router) application that lets users draw an area on a Leaflet 
 
 - Use Tailwind utility classes exclusively — no custom CSS classes except in `globals.css` (Leaflet overrides, tooltip system, scrollbar, animations).
 - Dark mode is controlled via a `data-theme` attribute on `<html>`, not Tailwind's `dark:` variant.
+- The gray palette in `tailwind.config.ts` is overridden with neutral (non-blue-tinted) values — **do not** use Tailwind's default `zinc` or `slate` as a workaround.
+
+### Design Consistency
+
+When adding or editing themed UI, follow these rules to keep the app visually coherent:
+
+- **No blue in dark mode.** All interactive accents (active tabs, checkboxes, buttons, focus rings) must use gray/white tones. Blue accents are only used in light mode.
+- **Primary actions in dark mode** use `bg-white text-gray-900` (inverted) or a subtle `bg-white/10` style — never colored backgrounds.
+- **Modal overlay** — always `bg-black/50` dark, `bg-black/30` light. Use `backdrop-blur-sm`.
+- **Close buttons** — all modals use a `w-7 h-7 rounded-lg` button with a `w-4 h-4` SVG cross icon, positioned in a flex row header.
+- **Checkbox active state** — `border-gray-400 bg-gray-400` dark, `border-blue-600 bg-blue-600` light.
+- **Tab active indicator** — `border-white/60` dark, `border-blue-600` light.
+- **Input focus** — `focus:border-white/30` dark, `focus:border-blue-400` light.
+- Before adding a new color token, check existing components for the canonical value to avoid drift.
 
 ## Architecture
 
@@ -44,10 +58,11 @@ src/
   components/
     Map.tsx           ← Leaflet + draw tools
     CompanyList.tsx   ← Sortable/filterable paginated list
+    CompanyDetail.tsx ← Field detail modal
+    ColumnConfig.tsx  ← Reusable column picker (list / popup tabs)
     SavedAreas.tsx    ← Firestore-backed saved searches
     SearchBar.tsx     ← Nominatim geocoding
     AuthModal.tsx     ← Firebase Auth (Google + email/password)
-    CompanyDetail.tsx ← Field detail modal
     ExportModal.tsx   ← CSV/JSON export
   lib/
     firebase.ts       ← Firebase client SDK init (git-ignored)

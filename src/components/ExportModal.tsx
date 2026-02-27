@@ -73,19 +73,19 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
 
   const t = isDark
     ? {
-        overlay: 'bg-black/60',
+        overlay: 'bg-black/50',
         modal: 'bg-gray-900 border-white/10',
         title: 'text-white',
         subtitle: 'text-gray-500',
         closeBtn: 'text-gray-600 hover:text-gray-300',
         sectionLabel: 'text-gray-500',
         check: 'border-white/20 bg-white/5',
-        checkActive: 'border-blue-500 bg-blue-500',
+        checkActive: 'border-gray-400 bg-gray-400',
         colItem: 'text-gray-400 hover:bg-white/5',
         allBtn: 'text-gray-600 hover:text-gray-400',
         formatBtn: 'text-gray-400 border-white/10 hover:border-white/20',
-        formatActive: 'text-white bg-blue-600 border-blue-600',
-        exportBtn: 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed',
+        formatActive: 'text-gray-900 bg-gray-200 border-gray-200',
+        exportBtn: 'bg-white hover:bg-gray-200 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed',
         divider: 'border-white/5',
       }
     : {

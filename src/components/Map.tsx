@@ -93,6 +93,18 @@ function MapRefCapture({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null
   return null
 }
 
+/** Invalidates the Leaflet map size when the container resizes (e.g. sidebar collapse). */
+function ResizeWatcher() {
+  const map = useMap()
+  useEffect(() => {
+    const container = map.getContainer()
+    const ro = new ResizeObserver(() => map.invalidateSize())
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [map])
+  return null
+}
+
 /**
  * Main Leaflet map with polygon/rectangle draw tools.
  * Renders company markers, handles draw-create/edit/delete events,
@@ -110,6 +122,8 @@ export default function Map({
   userLocation,
   popupColumns,
   restoreGeometry,
+  sidebarOpen,
+  onToggleSidebar,
 }: {
   companies: any[]
   selectedCompany: any
@@ -122,6 +136,8 @@ export default function Map({
   userLocation: [number, number] | null
   popupColumns: string[]
   restoreGeometry: { geometry: any; ts: number } | null
+  sidebarOpen: boolean
+  onToggleSidebar: () => void
 }) {
   const featureGroupRef = useRef<L.FeatureGroup | null>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
@@ -180,7 +196,7 @@ export default function Map({
   }, [onSearch])
 
   return (
-    <div className="absolute inset-0">
+    <div className="w-full h-full relative">
       <MapContainer
         center={FRANCE_CENTER}
         zoom={FRANCE_ZOOM}
@@ -281,7 +297,27 @@ export default function Map({
       <SelectedMarkerPopup selectedCompany={selectedCompany} popupColumns={popupColumns} onExpand={onExpand} />
       <LocationUpdater userLocation={userLocation} />
       <MapRefCapture mapRef={mapInstanceRef} />
+      <ResizeWatcher />
     </MapContainer>
+
+    {/* Sidebar toggle — right edge, vertically centered */}
+    <button
+      onClick={onToggleSidebar}
+      style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 1100 }}
+      className={`w-5 h-14 rounded-l-lg flex items-center justify-center transition-colors duration-200 ${
+        isDark
+          ? 'bg-gray-900 text-gray-500 hover:text-white'
+          : 'bg-white text-gray-400 hover:text-gray-900'
+      }`}
+      data-tooltip={sidebarOpen ? 'Hide panel' : 'Show panel'} data-tooltip-pos="left"
+    >
+      <svg
+        className={`w-3 h-3 transition-transform duration-300 ${sidebarOpen ? 'rotate-0' : 'rotate-180'}`}
+        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
 
     {/* Map control buttons — bottom left */}
     <div className="absolute bottom-8 left-3 z-[1000] flex flex-col gap-2">

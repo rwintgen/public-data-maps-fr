@@ -15,8 +15,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
 const HIDDEN_COLS = ['Géolocalisation de l\'établissement']
-const DEFAULT_LIST_COLS = ['Dénomination usuelle de l\'établissement', 'Code postal de l\'établissement', 'Commune de l\'établissement']
-const DEFAULT_POPUP_COLS = ['Dénomination usuelle de l\'établissement', 'SIRET', 'Code postal de l\'établissement', 'Commune de l\'établissement']
+const DEFAULT_LIST_COLS = ['Dénomination de l\'unité légale', 'Code postal de l\'établissement', 'Commune de l\'établissement']
+const DEFAULT_POPUP_COLS = ['Dénomination de l\'unité légale', 'SIRET', 'Code postal de l\'établissement', 'Commune de l\'établissement']
 
 export default function Home() {
   const [companies, setCompanies] = useState([])
@@ -34,9 +34,11 @@ export default function Home() {
   const [authOpen, setAuthOpen] = useState(false)
   const [expandedCompany, setExpandedCompany] = useState<any>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const settingsRef = useRef<HTMLDivElement>(null)
   const isSigningIn = useRef(false)
   const profileLoaded = useRef(false)
+  const searchAbort = useRef<AbortController | null>(null)
   const [prefsSaved, setPrefsSaved] = useState(false)
 
   const prefsKey = (uid: string) => `prefs_${uid}`
@@ -51,6 +53,12 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [filters, setFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[]>([])
+
+  /** Apply the OS color-scheme preference on first mount (before any user pref overrides). */
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    setIsDark(mq.matches)
+  }, [])
 
   /**
    * Load user preferences on auth change.
@@ -143,23 +151,31 @@ export default function Home() {
   }
 
   const handleSearch = async (geometry: any) => {
+    if (searchAbort.current) {
+      searchAbort.current.abort()
+      searchAbort.current = null
+    }
     if (!geometry) {
       setCompanies([])
       setSearchArea(null)
       setSelectedCompany(null)
       setActiveSearchId(null)
+      setIsLoading(false)
       return
     }
     if (!geometry.coordinates || !Array.isArray(geometry.coordinates)) {
       console.error('Invalid geometry:', geometry)
       return
     }
+    const controller = new AbortController()
+    searchAbort.current = controller
     setIsLoading(true)
     try {
       const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ geometry }),
+        signal: controller.signal,
       })
       if (!response.ok) {
         const error = await response.json()
@@ -177,7 +193,8 @@ export default function Home() {
         const display = data.columns.filter((c: string) => !HIDDEN_COLS.includes(c))
         setDisplayColumns(display)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to search:', err)
     } finally {
       setIsLoading(false)
@@ -238,7 +255,7 @@ export default function Home() {
   const d = isDark
     ? {
         main: 'bg-gray-950',
-        sidebar: 'bg-gray-900 border-white/5',
+        sidebar: 'bg-gray-900',
         headerBorder: 'border-white/5',
         title: 'text-white',
         iconBtn: 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300 hover:text-white',
@@ -247,11 +264,11 @@ export default function Home() {
         dropdownLabel: 'text-gray-600',
         dropdownActive: 'text-white bg-white/10',
         dropdownItem: 'text-gray-400 hover:text-gray-200 hover:bg-white/5',
-        tabActive: 'text-white border-blue-500',
+        tabActive: 'text-white border-white/60',
         tab: 'text-gray-600 hover:text-gray-400 border-transparent',
         tabBorder: 'border-white/5',
         check: 'border-white/20 bg-white/5',
-        checkActive: 'border-blue-500 bg-blue-500',
+        checkActive: 'border-gray-400 bg-gray-400',
         colItem: 'text-gray-400 hover:bg-white/5',
         allBtn: 'text-gray-600 hover:text-gray-400',
         userName: 'text-gray-400',
@@ -264,7 +281,7 @@ export default function Home() {
       }
     : {
         main: 'bg-gray-100',
-        sidebar: 'bg-white border-gray-200',
+        sidebar: 'bg-white',
         headerBorder: 'border-gray-200',
         title: 'text-gray-900',
         iconBtn: 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-600 hover:text-gray-900',
@@ -310,6 +327,8 @@ export default function Home() {
           userLocation={userLocation}
           popupColumns={popupColumns}
           restoreGeometry={restoreGeometry}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
         {isLoading && (
           <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[1000] backdrop-blur-sm text-sm font-medium px-4 py-2 rounded-full shadow-lg border ${d.loadingBg}`}>
@@ -319,7 +338,12 @@ export default function Home() {
       </div>
 
       {/* Sidebar */}
-      <div className={`w-[380px] h-full flex flex-col border-l shadow-2xl ${d.sidebar}`}>
+      <div
+          className={`flex-shrink-0 h-full transition-[width] duration-300 ease-in-out overflow-hidden ${d.sidebar} ${
+            sidebarOpen ? 'w-[380px]' : 'w-0'
+          }`}
+        >
+          <div className="min-w-[380px] w-[380px] h-full flex flex-col">
         {/* Sample data banner */}
         {isSampleData && (
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400">
@@ -537,7 +561,7 @@ export default function Home() {
             disabled={companies.length === 0}
             className={`text-[10px] font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-all ${
               companies.length > 0
-                ? isDark ? 'text-blue-400 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10' : 'text-blue-600 border-blue-300 hover:border-blue-400 hover:bg-blue-50'
+                ? isDark ? 'text-gray-300 border-white/15 hover:border-white/30 hover:bg-white/5' : 'text-blue-600 border-blue-300 hover:border-blue-400 hover:bg-blue-50'
                 : isDark ? 'text-gray-700 border-white/5 cursor-not-allowed' : 'text-gray-400 border-gray-200 cursor-not-allowed'
             }`}
             data-tooltip="Export search results" data-tooltip-pos="left"
@@ -548,7 +572,8 @@ export default function Home() {
             Export
           </button>
         </div>
-      </div>
+          </div>
+        </div>
     </main>
 
     {authOpen && (

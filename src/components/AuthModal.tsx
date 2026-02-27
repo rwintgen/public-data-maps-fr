@@ -86,23 +86,23 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
 
   const t = isDark
     ? {
-        overlay: 'bg-black/60',
+        overlay: 'bg-black/50',
         modal: 'bg-gray-900 border-white/10',
         title: 'text-white',
         tab: 'text-gray-500 hover:text-gray-300',
-        tabActive: 'text-white border-b-2 border-blue-500',
+        tabActive: 'text-white border-b-2 border-white/60',
         tabBorder: 'border-white/8',
         label: 'text-gray-400',
-        input: 'bg-white/5 border-white/10 text-white placeholder-gray-600 focus:border-blue-500/60 focus:bg-white/8',
+        input: 'bg-white/5 border-white/10 text-white placeholder-gray-600 focus:border-white/30 focus:bg-white/8',
         error: 'text-red-400 bg-red-400/10 border-red-400/20',
-        primaryBtn: 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50',
+        primaryBtn: 'bg-white hover:bg-gray-200 text-gray-900 disabled:opacity-50',
         divider: 'border-white/8',
         dividerText: 'text-gray-600',
         googleBtn: 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300 hover:text-white',
         closeBtn: 'text-gray-600 hover:text-gray-300',
       }
     : {
-        overlay: 'bg-black/40',
+        overlay: 'bg-black/30',
         modal: 'bg-white border-gray-200',
         title: 'text-gray-900',
         tab: 'text-gray-400 hover:text-gray-700',
@@ -124,28 +124,28 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
       className={`fixed inset-0 z-[9000] flex items-center justify-center backdrop-blur-sm ${t.overlay}`}
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
-      <div className={`relative w-[360px] rounded-2xl border shadow-2xl p-6 ${t.modal}`}>
-        <button
-          onClick={onClose}
-          className={`absolute top-4 right-4 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${t.closeBtn}`}
-          data-tooltip="Close" data-tooltip-pos="left"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        {/* Tabs */}
-        <div className={`flex gap-4 mb-5 border-b pb-0 ${t.tabBorder}`}>
-          {(['signin', 'signup'] as const).map((t_) => (
-            <button
-              key={t_}
-              onClick={() => { setTab(t_); setError('') }}
-              className={`pb-2.5 text-sm font-medium transition-colors ${tab === t_ ? t.tabActive : t.tab}`}
-            >
-              {t_ === 'signin' ? 'Sign in' : 'Create account'}
-            </button>
-          ))}
+      <div className={`w-[360px] rounded-2xl border shadow-2xl p-6 ${t.modal}`}>
+        <div className={`flex items-center justify-between mb-5 border-b pb-0 ${t.tabBorder}`}>
+          <div className="flex gap-4">
+            {(['signin', 'signup'] as const).map((t_) => (
+              <button
+                key={t_}
+                onClick={() => { setTab(t_); setError('') }}
+                className={`pb-2.5 text-sm font-medium transition-colors ${tab === t_ ? t.tabActive : t.tab}`}
+              >
+                {t_ === 'signin' ? 'Sign in' : 'Create account'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onClose}
+            className={`mb-2 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} ${t.closeBtn}`}
+            data-tooltip="Close" data-tooltip-pos="left"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <form onSubmit={handleEmailAuth} className="space-y-3">

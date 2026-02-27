@@ -143,20 +143,20 @@ export default function CompanyList({
         label: 'text-gray-400',
         badge: 'text-gray-500 bg-gray-800/50',
         itemHover: 'hover:bg-white/5',
-        itemSelectedBg: 'bg-blue-500/15 border-blue-500/40 shadow-sm shadow-blue-500/10',
+        itemSelectedBg: 'bg-white/8 border-white/20 shadow-sm shadow-white/5',
         itemText: 'text-gray-200',
         itemSub: 'text-gray-500',
         paginationBorder: 'border-white/5',
         paginationBtn: 'text-gray-400 hover:text-white disabled:hover:text-gray-400',
         paginationNum: 'text-gray-500',
         toolbarBtn: 'text-gray-500 hover:text-gray-300 bg-white/5 hover:bg-white/10 border-white/10',
-        toolbarActive: 'text-blue-400 bg-blue-500/15 border-blue-500/30',
+        toolbarActive: 'text-white bg-white/10 border-white/20',
         select: 'bg-white/5 border-white/10 text-gray-300 text-xs',
         input: 'bg-white/5 border-white/10 text-gray-300 text-xs placeholder-gray-600',
         filterBg: 'bg-white/3 border-white/5',
         filterRemove: 'text-gray-600 hover:text-red-400',
         sortIcon: 'text-gray-500 hover:text-gray-300',
-        activeSortIcon: 'text-blue-400',
+        activeSortIcon: 'text-white',
         fieldLabel: 'text-gray-600',
       }
     : {
@@ -342,7 +342,7 @@ export default function CompanyList({
                       const val = company.fields?.[col] ?? ''
                       if (ci === 0) {
                         return (
-                          <p key={col} className={`text-sm font-medium leading-tight truncate ${isSelected ? 'text-blue-500' : t.itemText}`}>
+                          <p key={col} className={`text-sm font-medium leading-tight truncate ${isSelected ? (isDark ? 'text-white' : 'text-blue-500') : t.itemText}`}>
                             {val || '—'}
                           </p>
                         )

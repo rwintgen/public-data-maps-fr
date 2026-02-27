@@ -148,6 +148,40 @@ html, body {
 .leaflet-draw-toolbar a {
   background-size: 300px 30px !important;
 }
+
+/* === Tooltip on Leaflet control buttons (title attribute) === */
+.leaflet-bar a[title],
+.leaflet-draw-toolbar a[title] {
+  position: relative;
+  overflow: visible !important;
+}
+.leaflet-bar a[title]::after,
+.leaflet-draw-toolbar a[title]::after {
+  content: attr(title);
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%) translateX(2px);
+  background: #1f2937;
+  color: #f3f4f6;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.leaflet-bar a[title]:hover::after,
+.leaflet-draw-toolbar a[title]:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+  transition-delay: 0.6s;
+}
 [data-theme=light] ::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.12);
   border-radius: 9999px;

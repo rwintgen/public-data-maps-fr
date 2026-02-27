@@ -105,7 +105,7 @@ export default function SearchBar({ onSelect, isDark }: Props) {
 
   const t = isDark
     ? {
-        wrapper: 'bg-white/5 border-white/10 focus-within:border-blue-500/60 focus-within:bg-white/8',
+        wrapper: 'bg-white/5 border-white/10 focus-within:border-white/30 focus-within:bg-white/8',
         input: 'text-white placeholder-gray-500 bg-transparent',
         icon: 'text-gray-500',
         clearBtn: 'text-gray-500 hover:text-gray-300',

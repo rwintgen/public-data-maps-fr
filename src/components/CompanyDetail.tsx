@@ -30,7 +30,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         emptyValue: 'text-gray-700 italic',
         divider: 'border-white/5',
         coords: 'text-gray-600',
-        aiBtn: 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg shadow-purple-500/20',
+        aiBtn: 'bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-500 hover:to-purple-300 text-white shadow-lg shadow-purple-500/20',
         aiIcon: 'text-purple-200',
       }
     : {
@@ -57,7 +57,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div className="min-w-0 flex-1 pr-4">
             <h2 className={`text-base font-semibold leading-tight ${t.title}`}>
-              {fields["D\u00e9nomination usuelle de l'\u00e9tablissement"] || fields["D\u00e9nomination de l'unit\u00e9 l\u00e9gale"] || fields.SIRET || 'Company Details'}
+              {fields["D\u00e9nomination de l'unit\u00e9 l\u00e9gale"] || fields["D\u00e9nomination usuelle de l'\u00e9tablissement"] || fields.SIRET || 'Company Details'}
             </h2>
             {company.lat && company.lon && (
               <p className={`text-[10px] mt-1 font-mono ${t.coords}`}>

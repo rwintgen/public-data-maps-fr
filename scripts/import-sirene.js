@@ -1,150 +1,179 @@
 #!/usr/bin/env node
 // Usage: DATABASE_URL=postgresql://... node scripts/import-sirene.js [path/to/file.csv]
 //
-// Streams the SIRENE CSV into PostgreSQL in batches of 1000 rows.
+// Streams the SIRENE CSV into PostgreSQL via the COPY protocol.
 // Run this AFTER setup-db.sql has been applied.
+// Progress is saved to .import-checkpoint (byte offset) so interrupted runs resume.
 
 'use strict'
 
 const fs = require('fs')
 const path = require('path')
+const readline = require('readline')
 const { parse } = require('csv-parse')
-const { Pool } = require('pg')
+const { Client } = require('pg')
+const copyFrom = require('pg-copy-streams').from
 
 const CSV_PATH = process.argv[2]
   ?? path.join(__dirname, '..', 'data', 'economicref-france-sirene-v3-sample.csv')
 
-const GEO_COL = "Géolocalisation de l'établissement"
-const BATCH_SIZE = 1000
+const GEO_COL = "G\u00e9olocalisation de l'\u00e9tablissement"
+const BATCH_SIZE = 10000
+const CHECKPOINT_FILE = path.join(__dirname, '..', '.import-checkpoint')
 
 if (!process.env.DATABASE_URL) {
-  console.error('❌  Set DATABASE_URL before running this script.')
-  console.error('    Example: DATABASE_URL=postgresql://postgres:PASSWORD@localhost:5432/sirene_db node scripts/import-sirene.js')
+  console.error('Set DATABASE_URL before running this script.')
   process.exit(1)
 }
-
 if (!fs.existsSync(CSV_PATH)) {
-  console.error(`❌  CSV file not found: ${CSV_PATH}`)
+  console.error('CSV file not found:', CSV_PATH)
   process.exit(1)
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: false })
+function readHeader() {
+  return new Promise((resolve, reject) => {
+    const rl = readline.createInterface({
+      input: fs.createReadStream(CSV_PATH, { encoding: 'utf-8' }),
+    })
+    rl.once('line', (line) => { rl.close(); resolve(line.split(';')) })
+    rl.once('error', reject)
+  })
+}
 
-let total = 0
-let skipped = 0
-let batch = []
-
-/**
- * Inserts an array of parsed rows into the `establishments` table
- * using a single multi-row INSERT with ON CONFLICT upsert.
- */
-async function insertBatch(rows) {
-  if (rows.length === 0) return
-
-  const valuePlaceholders = []
-  const params = []
-  let i = 1
-
-  for (const row of rows) {
-    valuePlaceholders.push(`($${i}, $${i+1}, $${i+2}, ST_SetSRID(ST_MakePoint($${i+2}, $${i+1}), 4326), $${i+3})`)
-    params.push(row.siret, row.lat, row.lon, JSON.stringify(row.fields))
-    i += 4
-  }
-
-  const sql = `
-    INSERT INTO establishments (siret, lat, lon, geom, fields)
-    VALUES ${valuePlaceholders.join(', ')}
-    ON CONFLICT (siret) DO UPDATE
-      SET lat   = EXCLUDED.lat,
-          lon   = EXCLUDED.lon,
-          geom  = EXCLUDED.geom,
-          fields = EXCLUDED.fields
-  `
-
-  await pool.query(sql, params)
+function copyEscape(val) {
+  if (val === null || val === undefined || val === '') return '\\N'
+  return String(val)
+    .replace(/\\/g, '\\\\')
+    .replace(/\t/g, '\\t')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
 }
 
 async function run() {
-  console.log(`📂  Reading: ${CSV_PATH}`)
-  const client = await pool.connect()
-  client.release()
-  console.log('✅  Database connected.')
+  console.log('Reading:', CSV_PATH)
 
-  console.log('⏳  Dropping indexes for faster bulk insert...')
-  try {
-    await pool.query('DROP INDEX IF EXISTS idx_establishments_geom')
-    await pool.query('DROP INDEX IF EXISTS idx_establishments_fields')
-    console.log('✅  Indexes dropped.')
-  } catch (err) {
-    console.error('⚠️  Warning: Could not drop indexes:', err.message)
+  const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: false })
+  await client.connect()
+  console.log('Database connected.')
+
+  const columns = await readHeader()
+
+  let fromByte = 0
+  if (fs.existsSync(CHECKPOINT_FILE)) {
+    fromByte = parseInt(fs.readFileSync(CHECKPOINT_FILE, 'utf-8').trim(), 10) || 0
+    if (fromByte > 0) console.log('Resuming from byte ' + fromByte.toLocaleString() + '...')
   }
 
-  await new Promise((resolve, reject) => {
-    const stream = fs.createReadStream(CSV_PATH, { encoding: 'utf-8' })
-      .pipe(parse({ columns: true, skip_empty_lines: true, relax_quotes: true, delimiter: ';' }))
+  await client.query('SET synchronous_commit = off')
+  await client.query("SET work_mem = '256MB'")
 
-    stream.on('data', async (row) => {
-      const rawGeo = row[GEO_COL]
-      if (!rawGeo || !rawGeo.trim()) { skipped++; return }
+  console.log('Preparing table for bulk insert...')
+  await client.query('ALTER TABLE establishments ALTER COLUMN geom DROP NOT NULL')
+  await client.query('DROP INDEX IF EXISTS idx_establishments_geom')
+  await client.query('DROP INDEX IF EXISTS idx_establishments_fields')
+  await client.query('ALTER TABLE establishments DROP CONSTRAINT IF EXISTS establishments_siret_key')
+  await client.query('DROP INDEX IF EXISTS idx_establishments_siret')
+  console.log('All indexes/constraints dropped.')
 
-      const parts = rawGeo.split(',')
-      if (parts.length < 2) { skipped++; return }
+  const csvParser = fs.createReadStream(CSV_PATH, { start: fromByte })
+    .pipe(parse({
+      columns,
+      skip_empty_lines: true,
+      relax_quotes: true,
+      delimiter: ';',
+      skip_records_with_error: true,
+      info: true,
+    }))
 
-      const lat = parseFloat(parts[0].trim())
-      const lon = parseFloat(parts[1].trim())
-      if (!isFinite(lat) || !isFinite(lon)) { skipped++; return }
+  let total = 0
+  let skipped = 0
+  let batch = []
+  let lastBytes = 0
+  const startTime = Date.now()
 
-      const fields = { ...row }
-      delete fields[GEO_COL]
+  async function flushBatch() {
+    if (batch.length === 0) return
 
-      batch.push({ siret: row.SIRET ?? '', lat, lon, fields })
+    let payload = ''
+    for (const r of batch) {
+      payload += copyEscape(r.siret) + '\t'
+        + r.lat + '\t'
+        + r.lon + '\t'
+        + copyEscape(JSON.stringify(r.fields)) + '\n'
+    }
 
-      if (batch.length >= BATCH_SIZE) {
-        stream.pause()
-        const currentBatch = batch.splice(0, BATCH_SIZE)
-        try {
-          await insertBatch(currentBatch)
-          total += currentBatch.length
-          process.stdout.write(`\r  Inserted ${total.toLocaleString()} rows...`)
-        } catch (err) {
-          console.error('\n❌  Insert error:', err.message)
-          reject(err)
-          return
-        }
-        stream.resume()
-      }
+    await new Promise((resolve, reject) => {
+      const stream = client.query(copyFrom(
+        'COPY establishments (siret, lat, lon, fields) FROM STDIN'
+      ))
+      stream.on('error', reject)
+      stream.on('finish', resolve)
+      stream.write(payload)
+      stream.end()
     })
 
-    stream.on('end', async () => {
-      try {
-        if (batch.length > 0) {
-          await insertBatch(batch)
-          total += batch.length
-        }
-        resolve()
-      } catch (err) {
-        reject(err)
-      }
-    })
+    total += batch.length
+    batch = []
 
-    stream.on('error', reject)
-  })
-
-  console.log(`\n\n✅  Done. Inserted/updated ${total.toLocaleString()} rows. Skipped ${skipped.toLocaleString()} (missing coordinates).`)
-  
-  console.log('⏳  Recreating indexes...')
-  try {
-    await pool.query(`CREATE INDEX idx_establishments_geom ON establishments USING GIST (geom)`)
-    await pool.query(`CREATE INDEX idx_establishments_fields ON establishments USING GIN (fields jsonb_path_ops)`)
-    console.log('✅  Indexes created.')
-  } catch (err) {
-    console.error('⚠️  Warning: Could not create indexes:', err.message)
+    fs.writeFileSync(CHECKPOINT_FILE, String(fromByte + lastBytes))
+    const elapsed = (Date.now() - startTime) / 1000
+    const rate = Math.round(total / elapsed)
+    console.log('  ' + total.toLocaleString() + ' rows  |  ' + rate.toLocaleString() + ' rows/s')
   }
 
-  await pool.end()
+  for await (const { record: row, info } of csvParser) {
+    lastBytes = info.bytes
+
+    const rawGeo = row[GEO_COL]
+    if (!rawGeo || !rawGeo.trim()) { skipped++; continue }
+
+    const parts = rawGeo.split(',')
+    if (parts.length < 2) { skipped++; continue }
+
+    const lat = parseFloat(parts[0].trim())
+    const lon = parseFloat(parts[1].trim())
+    if (!isFinite(lat) || !isFinite(lon)) { skipped++; continue }
+
+    const fields = { ...row }
+    delete fields[GEO_COL]
+
+    batch.push({ siret: row.SIRET ?? '', lat, lon, fields })
+
+    if (batch.length >= BATCH_SIZE) {
+      await flushBatch()
+    }
+  }
+  await flushBatch()
+
+  console.log('\nInserts done: ' + total.toLocaleString() + ' rows, ' + skipped.toLocaleString() + ' skipped.')
+
+  console.log('Deduplicating rows...')
+  const { rowCount } = await client.query(
+    'DELETE FROM establishments a USING establishments b WHERE a.id < b.id AND a.siret = b.siret'
+  )
+  console.log('Removed ' + (rowCount ?? 0).toLocaleString() + ' duplicates.')
+
+  console.log('Computing geometries...')
+  await client.query(
+    'UPDATE establishments SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326) WHERE geom IS NULL'
+  )
+  await client.query('ALTER TABLE establishments ALTER COLUMN geom SET NOT NULL')
+  console.log('Geometries computed.')
+
+  console.log('Recreating constraints and indexes (may take a few minutes)...')
+  await client.query('ALTER TABLE establishments ADD CONSTRAINT establishments_siret_key UNIQUE (siret)')
+  await client.query('CREATE INDEX IF NOT EXISTS idx_establishments_siret ON establishments (siret)')
+  await client.query('CREATE INDEX IF NOT EXISTS idx_establishments_geom ON establishments USING GIST (geom)')
+  await client.query('CREATE INDEX IF NOT EXISTS idx_establishments_fields ON establishments USING GIN (fields jsonb_path_ops)')
+  console.log('All indexes and constraints created.')
+
+  if (fs.existsSync(CHECKPOINT_FILE)) fs.unlinkSync(CHECKPOINT_FILE)
+  console.log('All done!')
+
+  await client.end()
 }
 
 run().catch((err) => {
-  console.error('❌  Fatal error:', err)
+  console.error('Fatal error:', err)
   process.exit(1)
 })

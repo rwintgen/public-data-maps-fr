@@ -42,14 +42,14 @@ export default function ColumnConfig({
         bg: 'bg-gray-900 border-white/10',
         title: 'text-white',
         closeBtn: 'text-gray-600 hover:text-gray-300',
-        tabActive: 'text-white border-blue-500',
+        tabActive: 'text-white border-white/60',
         tab: 'text-gray-500 hover:text-gray-300',
         tabBorder: 'border-white/8',
         allBtn: 'text-gray-500 hover:text-gray-300',
         item: 'hover:bg-white/5',
         itemText: 'text-gray-300',
         check: 'border-white/20 bg-white/5',
-        checkActive: 'border-blue-500 bg-blue-500',
+        checkActive: 'border-gray-400 bg-gray-400',
       }
     : {
         bg: 'bg-white border-gray-200',

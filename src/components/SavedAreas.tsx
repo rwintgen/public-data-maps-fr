@@ -104,7 +104,7 @@ export default function SavedAreas({
         label: 'text-gray-400 hover:text-gray-200',
         emptyText: 'text-gray-500',
         item: 'text-gray-300 hover:text-white hover:bg-white/5',
-        saveBtn: 'text-blue-400 hover:text-blue-300 border-blue-500/30 hover:border-blue-500/50',
+        saveBtn: 'text-gray-300 hover:text-white border-white/15 hover:border-white/30',
         deleteBtn: 'text-gray-600 hover:text-red-400',
       }
     : {
@@ -186,7 +186,7 @@ export default function SavedAreas({
                   />
                   <button
                     onClick={() => handleRename(area.id)}
-                    className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors px-1 py-0.5 rounded"
+                    className={`text-[11px] font-semibold transition-colors px-1 py-0.5 rounded ${isDark ? 'text-gray-300 hover:text-white' : 'text-blue-400 hover:text-blue-300'}`}
                   >
                     Save
                   </button>
@@ -213,7 +213,7 @@ export default function SavedAreas({
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); setRenamingId(area.id); setRenameValue(area.name) ; setTimeout(() => renameInputRef.current?.focus(), 50) }}
-                    className={`flex-shrink-0 w-6 h-6 mr-0.5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-blue-400' : 'text-gray-400 hover:text-blue-500'}`}
+                    className={`flex-shrink-0 w-6 h-6 mr-0.5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-blue-500'}`}
                     data-tooltip="Rename search"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +234,7 @@ export default function SavedAreas({
             </div>
           ))}
           {isSaving ? (
-            <div className={`mt-2 flex items-center gap-1.5 border rounded-lg px-2.5 py-1.5 ${isDark ? 'border-blue-500/30 bg-white/5' : 'border-blue-300 bg-gray-50'}`}>
+            <div className={`mt-2 flex items-center gap-1.5 border rounded-lg px-2.5 py-1.5 ${isDark ? 'border-white/15 bg-white/5' : 'border-blue-300 bg-gray-50'}`}>
               <input
                 ref={saveInputRef}
                 value={saveName}
@@ -246,7 +246,7 @@ export default function SavedAreas({
               <button
                 onClick={handleSave}
                 disabled={!saveName.trim()}
-                className={`text-[11px] font-semibold transition-colors px-1.5 py-0.5 rounded ${saveName.trim() ? 'text-blue-400 hover:text-blue-300' : isDark ? 'text-gray-600' : 'text-gray-400'}`}
+                className={`text-[11px] font-semibold transition-colors px-1.5 py-0.5 rounded ${saveName.trim() ? (isDark ? 'text-gray-300 hover:text-white' : 'text-blue-400 hover:text-blue-300') : isDark ? 'text-gray-600' : 'text-gray-400'}`}
               >
                 Save
               </button>

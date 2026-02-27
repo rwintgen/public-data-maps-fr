@@ -1,6 +1,12 @@
 # Firebase credentials
 src/lib/firebase.ts
 
+# Firebase App Hosting config
+apphosting.yaml
+
+# Firebase project alias
+.firebaserc
+
 # Local environment variables
 .env.local
 .env
@@ -18,5 +24,10 @@ data/StockEtablissement_utf8.csv
 # Build
 tsconfig.tsbuildinfo
 
+# OS / Editor
+.DS_Store
+.vscode/
+
 # Others
 cloud-sql-proxy
+.import-checkpoint
