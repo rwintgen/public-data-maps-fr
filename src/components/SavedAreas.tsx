@@ -11,6 +11,7 @@ interface Filter {
   value: string
 }
 
+
 /**
  * Collapsible panel listing saved searches from Firestore.
  * Supports save (inline name input), rename, delete, and restore —
@@ -22,15 +23,17 @@ export default function SavedAreas({
   currentFilters,
   currentSortBy,
   currentSortDir,
+  currentActivePresets,
   onDeleteCurrentSearch,
   activeSearchId,
   isDark,
 }: {
-  onRestoreSearch: (geometry: any, filters: Filter[], sortBy: string | null, sortDir: 'asc' | 'desc', id: string) => void
+  onRestoreSearch: (geometry: any, filters: Filter[], sortBy: string | null, sortDir: 'asc' | 'desc', activePresets: string[], id: string) => void
   currentSearchArea: any
   currentFilters: Filter[]
   currentSortBy: string | null
   currentSortDir: 'asc' | 'desc'
+  currentActivePresets: string[]
   onDeleteCurrentSearch: () => void
   activeSearchId: string | null
   isDark: boolean
@@ -84,6 +87,7 @@ export default function SavedAreas({
         filtersJson: JSON.stringify(currentFilters),
         sortBy: currentSortBy ?? null,
         sortDir: currentSortDir,
+        presetsJson: JSON.stringify(currentActivePresets),
         timestamp: new Date(),
       })
       setIsSaving(false)
@@ -205,7 +209,8 @@ export default function SavedAreas({
                       const filters: Filter[] = area.filtersJson ? JSON.parse(area.filtersJson) : []
                       const sortBy: string | null = area.sortBy ?? null
                       const sortDir: 'asc' | 'desc' = area.sortDir ?? 'asc'
-                      onRestoreSearch(geo, filters, sortBy, sortDir, area.id)
+                      const activePresets: string[] = area.presetsJson ? JSON.parse(area.presetsJson) : []
+                      onRestoreSearch(geo, filters, sortBy, sortDir, activePresets, area.id)
                     }}
                     className="flex-1 text-left text-sm px-2.5 py-1.5 min-w-0 truncate"
                   >

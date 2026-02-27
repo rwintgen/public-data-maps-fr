@@ -518,11 +518,12 @@ export default function Home() {
         {user && (
           <div className={`px-5 py-3 border-b ${d.savedAreasBorder}`}>
             <SavedAreas
-              onRestoreSearch={(geo, restoredFilters, restoredSortBy, restoredSortDir, id) => {
+              onRestoreSearch={(geo, restoredFilters, restoredSortBy, restoredSortDir, restoredPresets, id) => {
                 handleSearch(geo)
                 setFilters(restoredFilters)
                 setSortBy(restoredSortBy)
                 setSortDir(restoredSortDir)
+                setActivePresets(restoredPresets)
                 setActiveSearchId(id)
                 setRestoreGeometry({ geometry: geo, ts: Date.now() })
               }}
@@ -532,6 +533,7 @@ export default function Home() {
               currentFilters={filters}
               currentSortBy={sortBy}
               currentSortDir={sortDir}
+              currentActivePresets={activePresets}
               isDark={isDark}
             />
           </div>

@@ -77,6 +77,7 @@ export default function CompanyList({
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const [showPresets, setShowPresets] = useState(false)
+  const [hoveredPreset, setHoveredPreset] = useState<string | null>(null)
   const itemsPerPage = 20
 
   useEffect(() => {
@@ -207,7 +208,7 @@ export default function CompanyList({
   }
 
   return (
-    <div className="flex flex-col h-full min-w-0 overflow-x-hidden">
+    <div className="flex flex-col h-full min-w-0">
       {/* Header + toolbar */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -236,7 +237,7 @@ export default function CompanyList({
           {/* Preset tags toggle */}
           <button
             onClick={() => setShowPresets(!showPresets)}
-            className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${activePresets.length > 0 ? t.toolbarActive : t.toolbarBtn}`}
+            className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showPresets || activePresets.length > 0 ? t.toolbarActive : t.toolbarBtn}`}
             data-tooltip="Quick filters" data-tooltip-pos="left"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +247,7 @@ export default function CompanyList({
           {/* Filter toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${filters.length > 0 ? t.toolbarActive : t.toolbarBtn}`}
+            className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showFilters || filters.length > 0 ? t.toolbarActive : t.toolbarBtn}`}
             data-tooltip="Filter results" data-tooltip-pos="left"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,8 +264,8 @@ export default function CompanyList({
             const presets = PRESET_FILTERS.filter((p) => p.group === group)
             return (
               <div key={group} className="mb-1.5 last:mb-0">
-                <span className={`text-[9px] uppercase tracking-widest font-semibold ${t.presetGroup}`}>{group}</span>
-                <div className="flex flex-wrap gap-1 mt-0.5">
+                <div className={`text-[9px] uppercase tracking-widest font-semibold mb-0.5 ${t.presetGroup}`}>{group}</div>
+                <div className="flex flex-wrap gap-1">
                   {presets.map((preset) => {
                     const isActive = activePresets.includes(preset.id)
                     return (
@@ -277,8 +278,9 @@ export default function CompanyList({
                             onPresetsChange([...activePresets, preset.id])
                           }
                         }}
+                        onMouseEnter={() => setHoveredPreset(preset.id)}
+                        onMouseLeave={() => setHoveredPreset(null)}
                         className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all ${isActive ? t.presetTagActive : t.presetTag}`}
-                        data-tooltip={preset.description}
                       >
                         {preset.label}
                       </button>
@@ -288,6 +290,11 @@ export default function CompanyList({
               </div>
             )
           })}
+          {hoveredPreset && (
+            <p className={`text-[10px] mt-1.5 ${t.presetGroup}`}>
+              {PRESET_FILTERS.find((p) => p.id === hoveredPreset)?.description}
+            </p>
+          )}
           {activePresets.length > 0 && (
             <button
               onClick={() => onPresetsChange([])}
@@ -296,37 +303,6 @@ export default function CompanyList({
               Clear all tags
             </button>
           )}
-        </div>
-      )}
-
-      {/* Sort bar */}
-      {sortBy !== null && (
-        <div className="flex items-center gap-1.5 mb-2 min-w-0">
-          <span className={`flex-shrink-0 text-[10px] uppercase tracking-widest font-semibold ${t.fieldLabel}`}>Sort</span>
-          <ColSelect
-            value={sortBy}
-            onChange={(v) => onSortChange(v, sortDir)}
-            columns={columns}
-            className={`flex-1 min-w-0 rounded-md border h-[26px] ${t.select}`}
-          />
-          <button
-            onClick={() => onSortChange(sortBy, sortDir === 'asc' ? 'desc' : 'asc')}
-            className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${t.activeSortIcon}`}
-            data-tooltip={sortDir === 'asc' ? 'Sort ascending' : 'Sort descending'}
-          >
-            <svg className={`w-3.5 h-3.5 transition-transform ${sortDir === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onSortChange(null, 'asc')}
-            className={`transition-colors ${t.filterRemove}`}
-            data-tooltip="Clear sort"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
       )}
 
@@ -383,6 +359,39 @@ export default function CompanyList({
           >
             + Add filter
           </button>
+        </div>
+      )}
+
+      {/* Sort bar */}
+      {sortBy !== null && (
+        <div className={`rounded-lg border p-2 mb-2 ${t.filterBg}`}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className={`flex-shrink-0 text-[10px] uppercase tracking-widest font-semibold ${t.fieldLabel}`}>Sort</span>
+            <ColSelect
+              value={sortBy}
+              onChange={(v) => onSortChange(v, sortDir)}
+              columns={columns}
+              className={`flex-1 min-w-0 rounded-md border h-[26px] ${t.select}`}
+            />
+            <button
+              onClick={() => onSortChange(sortBy, sortDir === 'asc' ? 'desc' : 'asc')}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${t.activeSortIcon}`}
+              data-tooltip={sortDir === 'asc' ? 'Sort ascending' : 'Sort descending'}
+            >
+              <svg className={`w-3.5 h-3.5 transition-transform ${sortDir === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+            <button
+              onClick={() => onSortChange(null, 'asc')}
+              className={`transition-colors ${t.filterRemove}`}
+              data-tooltip="Clear sort"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 

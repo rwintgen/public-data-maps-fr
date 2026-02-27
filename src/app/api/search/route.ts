@@ -90,9 +90,18 @@ async function getColumnsFromDb(): Promise<string[]> {
 /** GET: returns available column names and whether the app is running on sample data. */
 export async function GET() {
   try {
-    const usingDb = isDbConfigured()
-    const columns = usingDb ? await getColumnsFromDb() : loadFromCsv().columns
-    return NextResponse.json({ columns, sampleData: !usingDb })
+    if (isDbConfigured()) {
+      try {
+        const columns = await getColumnsFromDb()
+        return NextResponse.json({ columns, sampleData: false })
+      } catch (dbError) {
+        console.warn('Database unavailable, falling back to CSV:', dbError)
+        const { columns } = loadFromCsv()
+        return NextResponse.json({ columns, sampleData: true })
+      }
+    }
+    const { columns } = loadFromCsv()
+    return NextResponse.json({ columns, sampleData: true })
   } catch (error) {
     console.error('Columns API error:', error)
     return NextResponse.json({ error: 'Failed to read columns', details: String(error) }, { status: 500 })
@@ -110,9 +119,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (isDbConfigured()) {
-      const { companies, columns } = await searchWithPostGIS(geometry)
-      console.log(`[postgis] Found ${companies.length} establishments.`)
-      return NextResponse.json({ companies, columns, sampleData: false })
+      try {
+        const { companies, columns } = await searchWithPostGIS(geometry)
+        console.log(`[postgis] Found ${companies.length} establishments.`)
+        return NextResponse.json({ companies, columns, sampleData: false })
+      } catch (dbError) {
+        console.warn('Database unavailable, falling back to CSV:', dbError)
+        const { default: booleanPointInPolygon } = await import('@turf/boolean-point-in-polygon')
+        const { point } = await import('@turf/helpers')
+        const { companies: all, columns } = loadFromCsv()
+        const companies = all.filter((c) => booleanPointInPolygon(point([c.lon, c.lat]), geometry))
+        console.log(`[csv] Found ${companies.length} establishments.`)
+        return NextResponse.json({ companies, columns, sampleData: true })
+      }
     }
 
     const { default: booleanPointInPolygon } = await import('@turf/boolean-point-in-polygon')

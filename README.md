@@ -212,6 +212,8 @@ This app requires server-side rendering (Next.js API routes handle the search). 
 - [ ] Import full SIRENE dataset into Cloud SQL
 - [ ] Increase result cap beyond 5 000 (pagination or streaming)
 - [ ] Cluster map pins for performance with large result sets
+- [ ] Audit and fix all preset filter labels
+- [ ] Add possibility to create custom filter labels
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)
 - [ ] Mobile-responsive layout
 - [ ] Add AI overview
