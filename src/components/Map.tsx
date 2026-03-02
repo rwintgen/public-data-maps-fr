@@ -2,7 +2,7 @@
 
 import { MapContainer, TileLayer, FeatureGroup, useMap, Marker, Popup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 
 import L from 'leaflet'
 import 'leaflet.markercluster'
@@ -137,7 +137,7 @@ function ClusteredMarkers({
 }
 
 /** Renders and auto-zooms a larger marker with a popup for the selected company. */
-function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand }: { selectedCompany: any; popupColumns: string[]; onExpand: (company: any) => void }) {
+function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDeselect }: { selectedCompany: any; popupColumns: string[]; onExpand: (company: any) => void; onDeselect: () => void }) {
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
 
@@ -149,6 +149,14 @@ function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand }: { sele
       }, 300)
     }
   }, [selectedCompany, map])
+
+  useEffect(() => {
+    const marker = markerRef.current
+    if (!marker || !selectedCompany) return
+    const handleClose = () => onDeselect()
+    marker.on('popupclose', handleClose)
+    return () => { marker.off('popupclose', handleClose) }
+  }, [selectedCompany, onDeselect])
 
   if (!selectedCompany) return null
 
@@ -213,8 +221,7 @@ function ResizeWatcher() {
 }
 
 /**
- * Clears the selected company when the user clicks the map background
- * or closes the selected-marker popup via the X button.
+ * Clears the selected company when the user clicks the map background.
  * Uses `recentMarkerClickRef` to avoid deselecting when clicking a new marker.
  */
 function MapDeselectHandler({ onCompanySelectRef, recentMarkerClickRef }: {
@@ -228,8 +235,7 @@ function MapDeselectHandler({ onCompanySelectRef, recentMarkerClickRef }: {
       onCompanySelectRef.current(null)
     }
     map.on('click', deselect)
-    map.on('popupclose', deselect)
-    return () => { map.off('click', deselect); map.off('popupclose', deselect) }
+    return () => { map.off('click', deselect) }
   }, [map, onCompanySelectRef, recentMarkerClickRef])
   return null
 }
@@ -354,6 +360,31 @@ export default function Map({
     onSearchRef.current(null)
   }, [])
 
+  const handleDeselect = useCallback(() => {
+    onCompanySelectRef.current(null)
+  }, [])
+
+  const drawConfig = useMemo(() => ({
+    polygon: {
+      shapeOptions: { color: '#8b5cf6', weight: 2, fillOpacity: 0.15 },
+      allowIntersection: false,
+      showArea: true,
+    },
+    rectangle: {
+      shapeOptions: { color: '#8b5cf6', weight: 2, fillOpacity: 0.15 },
+    },
+    circle: false as const,
+    circlemarker: false as const,
+    marker: false as const,
+    polyline: false as const,
+  }), [])
+
+  const editConfig = useMemo(() => ({
+    edit: {
+      selectedPathOptions: { color: '#a78bfa', fillOpacity: 0.25 },
+    } as any,
+  }), [])
+
   return (
     <div className="w-full h-full relative" data-mapstyle={mapStyle}>
       <MapContainer
@@ -386,40 +417,12 @@ export default function Map({
           onCreated={onCreated}
           onEdited={onEdited}
           onDeleted={onDeleted}
-          draw={{
-            polygon: {
-              shapeOptions: {
-                color: '#8b5cf6',
-                weight: 2,
-                fillOpacity: 0.15,
-              },
-              allowIntersection: false,
-              showArea: true,
-            },
-            rectangle: {
-              shapeOptions: {
-                color: '#8b5cf6',
-                weight: 2,
-                fillOpacity: 0.15,
-              },
-            },
-            circle: false,
-            circlemarker: false,
-            marker: false,
-            polyline: false,
-          }}
-          edit={{
-            edit: {
-              selectedPathOptions: {
-                color: '#a78bfa',
-                fillOpacity: 0.25,
-              },
-            } as any,
-          }}
+          draw={drawConfig}
+          edit={editConfig}
         />
       </FeatureGroup>
       <ClusteredMarkers companies={companies} onCompanySelect={onCompanySelect} onExpand={onExpand} popupColumns={popupColumns} recentMarkerClickRef={recentMarkerClickRef} />
-      <SelectedMarkerPopup selectedCompany={selectedCompany} popupColumns={popupColumns} onExpand={onExpand} />
+      <SelectedMarkerPopup selectedCompany={selectedCompany} popupColumns={popupColumns} onExpand={onExpand} onDeselect={handleDeselect} />
       <MapDeselectHandler onCompanySelectRef={onCompanySelectRef} recentMarkerClickRef={recentMarkerClickRef} />
       <LocationUpdater userLocation={userLocation} />
       <MapRefCapture mapRef={mapInstanceRef} />
