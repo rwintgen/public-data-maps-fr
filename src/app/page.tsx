@@ -8,6 +8,7 @@ import SearchBar from '@/components/SearchBar'
 import AuthModal from '@/components/AuthModal'
 import CompanyDetail from '@/components/CompanyDetail'
 import ExportModal from '@/components/ExportModal'
+import ColumnConfig from '@/components/ColumnConfig'
 import { applyPresets } from '@/lib/presets'
 import { auth, db } from '@/lib/firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
@@ -27,18 +28,17 @@ export default function Home() {
   const [restoreGeometry, setRestoreGeometry] = useState<{ geometry: any; ts: number } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSampleData, setIsSampleData] = useState<boolean | null>(null)
-  const [isDark, setIsDark] = useState(true)
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
+  const [systemDark, setSystemDark] = useState(true)
   const [mapStyle, setMapStyle] = useState<'default' | 'themed' | 'satellite'>('themed')
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [user] = useAuthState(auth)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [expandedCompany, setExpandedCompany] = useState<any>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [searchExpanded, setSearchExpanded] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const settingsRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const isSigningIn = useRef(false)
   const profileLoaded = useRef(false)
@@ -52,16 +52,21 @@ export default function Home() {
   const [listColumns, setListColumns] = useState<string[]>(DEFAULT_LIST_COLS)
   const [popupColumns, setPopupColumns] = useState<string[]>(DEFAULT_POPUP_COLS)
 
-  const [settingsTab, setSettingsTab] = useState<'general' | 'list' | 'popup'>('general')
+  const [fieldsModalTab, setFieldsModalTab] = useState<'list' | 'popup' | null>(null)
 
   const [sortCriteria, setSortCriteria] = useState<{ column: string; dir: 'asc' | 'desc' }[]>([])
   const [filters, setFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[]>([])
   const [activePresets, setActivePresets] = useState<string[]>([])
 
-  /** Apply the OS color-scheme preference on first mount (before any user pref overrides). */
+  const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark'
+
+  /** Listen to OS color-scheme changes for system theme mode. */
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    setIsDark(mq.matches)
+    setSystemDark(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
 
   /**
@@ -79,7 +84,8 @@ export default function Home() {
         if (Array.isArray(p.listColumns) && p.listColumns.length > 0) setListColumns(p.listColumns)
         if (Array.isArray(p.popupColumns) && p.popupColumns.length > 0) setPopupColumns(p.popupColumns)
         if (p.mapStyle) setMapStyle(p.mapStyle)
-        if (typeof p.isDark === 'boolean') setIsDark(p.isDark)
+        if (p.themeMode) setThemeMode(p.themeMode)
+        else if (typeof p.isDark === 'boolean') setThemeMode(p.isDark ? 'dark' : 'light')
       }
     } catch (_) {}
     getDoc(doc(db, 'userProfiles', user.uid))
@@ -89,7 +95,8 @@ export default function Home() {
           if (Array.isArray(p.listColumns) && p.listColumns.length > 0) setListColumns(p.listColumns)
           if (Array.isArray(p.popupColumns) && p.popupColumns.length > 0) setPopupColumns(p.popupColumns)
           if (p.mapStyle) setMapStyle(p.mapStyle)
-          if (typeof p.isDark === 'boolean') setIsDark(p.isDark)
+          if (p.themeMode) setThemeMode(p.themeMode)
+          else if (typeof p.isDark === 'boolean') setThemeMode(p.isDark ? 'dark' : 'light')
           try { localStorage.setItem(key, JSON.stringify(p)) } catch (_) {}
         }
         profileLoaded.current = true
@@ -106,7 +113,7 @@ export default function Home() {
    */
   useEffect(() => {
     if (!user || !profileLoaded.current) return
-    const prefs = { listColumns, popupColumns, mapStyle, isDark }
+    const prefs = { listColumns, popupColumns, mapStyle, themeMode }
     try { localStorage.setItem(prefsKey(user.uid), JSON.stringify(prefs)) } catch (_) {}
     const timer = setTimeout(() => {
       setDoc(doc(db, 'userProfiles', user.uid), prefs, { merge: true })
@@ -114,7 +121,7 @@ export default function Home() {
         .catch((e) => console.warn('Firestore prefs save failed:', e))
     }, 1000)
     return () => clearTimeout(timer)
-  }, [user, listColumns, popupColumns, mapStyle, isDark])
+  }, [user, listColumns, popupColumns, mapStyle, themeMode])
 
   useEffect(() => {
     fetch('/api/search')
@@ -138,9 +145,6 @@ export default function Home() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false)
-      }
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false)
       }
@@ -263,16 +267,6 @@ export default function Home() {
     console.log('Ask AI about:', company)
   }, [])
 
-  const toggleCol = (col: string, target: 'list' | 'popup') => {
-    const setter = target === 'list' ? setListColumns : setPopupColumns
-    const current = target === 'list' ? listColumns : popupColumns
-    if (current.includes(col)) {
-      setter(current.filter((c) => c !== col))
-    } else {
-      setter([...current, col])
-    }
-  }
-
   const d = isDark
     ? {
         main: 'bg-gray-950',
@@ -327,10 +321,6 @@ export default function Home() {
         loadingBg: 'bg-white/90 text-gray-900 border-gray-200',
       }
 
-  const activeColTarget = settingsTab === 'list' ? 'list' : 'popup'
-  const activeCols = settingsTab === 'list' ? listColumns : popupColumns
-  const activeColSetter = settingsTab === 'list' ? setListColumns : setPopupColumns
-
   return (
     <>
       <main className={`flex h-screen ${d.main}`}>
@@ -382,7 +372,7 @@ export default function Home() {
             <div className="flex items-center gap-1.5">
               {/* Search toggle */}
               <button
-                onClick={() => { setSearchExpanded(!searchExpanded); setProfileOpen(false); setSettingsOpen(false) }}
+                onClick={() => { setSearchExpanded(!searchExpanded); setProfileOpen(false) }}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${
                   searchExpanded
                     ? isDark ? 'bg-white/15 border-white/25 text-white' : 'bg-violet-50 border-violet-300 text-violet-600'
@@ -394,130 +384,12 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
-              {/* Settings */}
-              <div className="relative" ref={settingsRef}>
-                <button
-                  onClick={() => { setSettingsOpen(!settingsOpen); setSettingsTab('general'); setProfileOpen(false); setSearchExpanded(false) }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${d.iconBtn}`}
-                  data-tooltip="Settings" data-tooltip-pos="bottom"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
-                {settingsOpen && (
-                  <div className={`absolute right-0 top-10 z-[2000] w-64 rounded-xl border shadow-2xl backdrop-blur-sm overflow-hidden ${d.dropdownBg}`}>
-                    {/* Tabs */}
-                    <div className={`flex border-b ${d.tabBorder}`}>
-                      {(['general', 'list', 'popup'] as const).map((t_) => (
-                        <button
-                          key={t_}
-                          onClick={() => setSettingsTab(t_)}
-                          className={`flex-1 text-[10px] font-semibold uppercase tracking-wider py-2.5 border-b-2 transition-colors ${
-                            settingsTab === t_ ? d.tabActive : d.tab
-                          }`}
-                        >
-                          {t_ === 'general' ? 'General' : t_ === 'list' ? 'List' : 'Popup'}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* General tab */}
-                    {settingsTab === 'general' && (
-                      <div className="py-1">
-                        <div className={`px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest ${d.dropdownLabel}`}>Map Style</div>
-                        {(['default', 'themed', 'satellite'] as const).map((style) => {
-                          const labels: Record<string, string> = { default: 'Default', themed: 'Themed', satellite: 'Satellite' }
-                          return (
-                            <button
-                              key={style}
-                              onClick={() => setMapStyle(style)}
-                              className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${mapStyle === style ? d.dropdownActive : d.dropdownItem}`}
-                            >
-                              <span>{labels[style]}</span>
-                              {mapStyle === style && (
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </button>
-                          )
-                        })}
-                        {user && (
-                          <div className="mx-3 mt-2 mb-1 flex items-center justify-end h-5">
-                            <span className={`text-[10px] flex items-center gap-1 transition-opacity ${isDark ? 'text-green-400' : 'text-green-600'} ${prefsSaved ? 'animate-prefs-saved' : 'opacity-0'}`}>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                              Preferences saved
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* List / Popup column tabs */}
-                    {(settingsTab === 'list' || settingsTab === 'popup') && (
-                      <div>
-                        <div className="flex gap-3 px-3 pt-2 pb-1 items-center">
-                          <button onClick={() => activeColSetter([...displayColumns])} className={`text-[10px] font-medium ${d.allBtn}`}>All</button>
-                          <button onClick={() => activeColSetter([])} className={`text-[10px] font-medium ${d.allBtn}`}>None</button>
-                          <button
-                            onClick={() => activeColSetter(settingsTab === 'list' ? DEFAULT_LIST_COLS.filter(c => displayColumns.includes(c)) : DEFAULT_POPUP_COLS.filter(c => displayColumns.includes(c)))}
-                            className={`text-[10px] font-medium ml-auto ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
-                          >
-                            Restore defaults
-                          </button>
-                        </div>
-                        <div className="max-h-[280px] overflow-y-auto px-1.5 py-1">
-                          {displayColumns.map((col) => {
-                            const isOn = activeCols.includes(col)
-                            return (
-                              <button
-                                key={col}
-                                onClick={() => toggleCol(col, activeColTarget)}
-                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${d.colItem}`}
-                              >
-                                <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center border transition-all ${isOn ? d.checkActive : d.check}`}>
-                                  {isOn && (
-                                    <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  )}
-                                </div>
-                                <span className="text-[11px] truncate">{col}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Theme toggle */}
-              <button
-                onClick={() => setIsDark(!isDark)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${d.themeBtnBg}`}
-                data-tooltip={isDark ? 'Light mode' : 'Dark mode'} data-tooltip-pos="bottom"
-              >
-                {isDark ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-                  </svg>
-                )}
-              </button>
-
               {/* Profile */}
               <div className="relative" ref={profileRef}>
                 <button
-                  onClick={() => { setProfileOpen(!profileOpen); setSettingsOpen(false); setSearchExpanded(false) }}
+                  onClick={() => { setProfileOpen(!profileOpen); setSearchExpanded(false) }}
                   className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all overflow-hidden ${d.iconBtn}`}
-                  data-tooltip={user ? 'Account' : 'Sign in'} data-tooltip-pos="left"
+                  data-tooltip={user ? 'Account' : 'Settings'} data-tooltip-pos="left"
                 >
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="" className="w-full h-full rounded-lg object-cover" />
@@ -529,32 +401,125 @@ export default function Home() {
                 </button>
                 {profileOpen && (
                   <div className={`absolute right-0 top-10 z-[2000] w-72 rounded-xl border shadow-2xl backdrop-blur-sm overflow-hidden ${d.dropdownBg}`}>
-                    {user ? (
-                      <>
-                        <div className={`px-4 py-3 border-b ${d.tabBorder}`}>
-                          <div className="flex items-center gap-2.5">
-                            {user.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />}
-                            <div className="min-w-0 flex-1">
-                              <p className={`text-sm font-medium truncate ${d.title}`}>{user.displayName ?? 'User'}</p>
-                              {user.email && <p className={`text-[11px] truncate ${d.dropdownLabel}`}>{user.email}</p>}
-                            </div>
+                    {user && (
+                      <div className={`px-4 py-3 border-b ${d.tabBorder}`}>
+                        <div className="flex items-center gap-2.5">
+                          {user.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />}
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-sm font-medium truncate ${d.title}`}>{user.displayName ?? 'User'}</p>
+                            {user.email && <p className={`text-[11px] truncate ${d.dropdownLabel}`}>{user.email}</p>}
                           </div>
                         </div>
-                        <div className="px-3 py-2.5 max-h-[50vh] overflow-y-auto">
-                          <SavedAreas
-                            onRestoreSearch={(geo, restoredFilters, restoredSortCriteria, restoredPresets, id) => {
-                              handleSearch(geo)
-                              setFilters(restoredFilters)
-                              setSortCriteria(restoredSortCriteria)
-                              setActivePresets(restoredPresets)
-                              setActiveSearchId(id)
-                              setRestoreGeometry({ geometry: geo, ts: Date.now() })
-                              setProfileOpen(false)
-                            }}
-                            onDeleteCurrentSearch={() => handleSearch(null)}
-                            activeSearchId={activeSearchId}
-                            isDark={isDark}
-                          />
+                      </div>
+                    )}
+
+                    <div className="px-4 py-3 space-y-3">
+                      <div>
+                        <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Theme</div>
+                        <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                          {([
+                            { mode: 'system' as const, label: 'Auto', icon: (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            )},
+                            { mode: 'light' as const, label: 'Light', icon: (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                              </svg>
+                            )},
+                            { mode: 'dark' as const, label: 'Dark', icon: (
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                              </svg>
+                            )},
+                          ]).map(({ mode, label, icon }) => (
+                            <button
+                              key={mode}
+                              onClick={() => setThemeMode(mode)}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-colors ${
+                                themeMode === mode
+                                  ? isDark ? 'bg-white/15 text-white' : 'bg-violet-50 text-violet-700'
+                                  : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {icon}
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Map Style</div>
+                        <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                          {([
+                            { style: 'default' as const, label: 'Default' },
+                            { style: 'themed' as const, label: 'Themed' },
+                            { style: 'satellite' as const, label: 'Satellite' },
+                          ]).map(({ style, label }) => (
+                            <button
+                              key={style}
+                              onClick={() => setMapStyle(style)}
+                              className={`flex-1 py-1.5 text-[11px] font-medium transition-colors ${
+                                mapStyle === style
+                                  ? isDark ? 'bg-white/15 text-white' : 'bg-violet-50 text-violet-700'
+                                  : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Visible Fields</div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setFieldsModalTab('list'); setProfileOpen(false) }}
+                            className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                          >
+                            List ({listColumns.length})
+                          </button>
+                          <button
+                            onClick={() => { setFieldsModalTab('popup'); setProfileOpen(false) }}
+                            className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                          >
+                            Popup ({popupColumns.length})
+                          </button>
+                        </div>
+                      </div>
+
+                      {user && prefsSaved && (
+                        <div className="flex items-center justify-end h-5">
+                          <span className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'} animate-prefs-saved`}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            Preferences saved
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {user ? (
+                      <>
+                        <div className={`border-t ${d.tabBorder}`}>
+                          <div className="px-3 py-2.5 max-h-[40vh] overflow-y-auto overflow-x-hidden">
+                            <SavedAreas
+                              onRestoreSearch={(geo, restoredFilters, restoredSortCriteria, restoredPresets, id) => {
+                                handleSearch(geo)
+                                setFilters(restoredFilters)
+                                setSortCriteria(restoredSortCriteria)
+                                setActivePresets(restoredPresets)
+                                setActiveSearchId(id)
+                                setRestoreGeometry({ geometry: geo, ts: Date.now() })
+                                setProfileOpen(false)
+                              }}
+                              onDeleteCurrentSearch={() => handleSearch(null)}
+                              activeSearchId={activeSearchId}
+                              isDark={isDark}
+                            />
+                          </div>
                         </div>
                         <div className={`px-4 py-2.5 border-t ${d.tabBorder}`}>
                           <button
@@ -566,7 +531,7 @@ export default function Home() {
                         </div>
                       </>
                     ) : (
-                      <div className="p-4">
+                      <div className={`px-4 py-3 border-t ${d.tabBorder}`}>
                         <button
                           onClick={() => { setAuthOpen(true); setProfileOpen(false) }}
                           className={`w-full flex items-center justify-center gap-2 text-sm font-medium border rounded-lg px-3 py-2 transition-all ${d.signInBtn}`}
@@ -659,6 +624,24 @@ export default function Home() {
         isDark={isDark}
         onClose={() => setExportOpen(false)}
       />
+    )}
+
+    {fieldsModalTab && (
+      <div
+        className={`fixed inset-0 z-[9000] flex items-center justify-center backdrop-blur-sm ${isDark ? 'bg-black/50' : 'bg-black/30'}`}
+        onMouseDown={(e) => { if (e.target === e.currentTarget) setFieldsModalTab(null) }}
+      >
+        <ColumnConfig
+          columns={displayColumns}
+          listColumns={listColumns}
+          popupColumns={popupColumns}
+          onListColumnsChange={setListColumns}
+          onPopupColumnsChange={setPopupColumns}
+          isDark={isDark}
+          initialTab={fieldsModalTab}
+          onClose={() => setFieldsModalTab(null)}
+        />
+      </div>
     )}
     </>
   )

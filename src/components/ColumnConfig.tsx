@@ -9,6 +9,7 @@ interface Props {
   onListColumnsChange: (cols: string[]) => void
   onPopupColumnsChange: (cols: string[]) => void
   isDark: boolean
+  initialTab?: 'list' | 'popup'
   onClose: () => void
 }
 
@@ -19,9 +20,10 @@ export default function ColumnConfig({
   onListColumnsChange,
   onPopupColumnsChange,
   isDark,
+  initialTab,
   onClose,
 }: Props) {
-  const [tab, setTab] = useState<'list' | 'popup'>('list')
+  const [tab, setTab] = useState<'list' | 'popup'>(initialTab ?? 'list')
 
   const activeCols = tab === 'list' ? listColumns : popupColumns
   const setActiveCols = tab === 'list' ? onListColumnsChange : onPopupColumnsChange

@@ -88,6 +88,7 @@ export default function CompanyList({
   const [hoveredPreset, setHoveredPreset] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveName, setSaveName] = useState('')
+  const [chipsExpanded, setChipsExpanded] = useState(false)
   const saveInputRef = useRef<HTMLInputElement>(null)
   const itemsPerPage = 20
 
@@ -265,19 +266,19 @@ export default function CompanyList({
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${t.badge}`}>
             {processed.length}{processed.length !== companies.length ? `/${companies.length}` : ''}
           </span>
-        </div>
-        <div className="flex items-center gap-1">
           {canSave && (
             <button
               onClick={handleSave}
-              className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${t.saveBtn}`}
-              data-tooltip="Save search" data-tooltip-pos="left"
+              className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all ${t.saveBtn}`}
+              data-tooltip="Save search"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
             </button>
           )}
+        </div>
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setShowSort(!showSort)}
             className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showSort || sortCriteria.length > 0 ? t.toolbarActive : t.toolbarBtn}`}
@@ -335,8 +336,8 @@ export default function CompanyList({
       )}
 
       {hasActiveItems && (
-        <div className="flex items-center gap-1.5 mb-2 min-w-0">
-          <div className="flex-1 min-w-0 overflow-x-auto flex items-center gap-1 scrollbar-none">
+        <div className="flex items-start gap-1 mb-2 min-w-0">
+          <div className={`flex-1 min-w-0 ${chipsExpanded ? 'flex flex-wrap' : 'overflow-x-auto flex'} items-center gap-1 scrollbar-none`}>
             {sortCriteria.map((sc, i) => (
               <span key={`sort-${i}`} className={`inline-flex items-center gap-1 text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.presetTagActive}`}>
                 <svg className={`w-2.5 h-2.5 ${sc.dir === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" /></svg>
@@ -367,15 +368,26 @@ export default function CompanyList({
               </span>
             ))}
           </div>
-          <button
-            onClick={clearAll}
-            className={`flex-shrink-0 transition-colors ${t.chipClear}`}
-            data-tooltip="Clear all"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex-shrink-0 flex items-center gap-0.5 pt-0.5">
+            <button
+              onClick={() => setChipsExpanded(!chipsExpanded)}
+              className={`transition-colors ${t.chipClear}`}
+              data-tooltip={chipsExpanded ? 'Collapse' : 'Expand'}
+            >
+              <svg className={`w-3 h-3 transition-transform ${chipsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={clearAll}
+              className={`transition-colors ${t.chipClear}`}
+              data-tooltip="Clear all"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
@@ -413,7 +425,7 @@ export default function CompanyList({
           {sortCriteria.length < 5 && (
             <button
               onClick={addSortCriterion}
-              className={`text-[10px] font-medium ${t.sortIcon}`}
+              className={`text-[10px] leading-none font-medium py-1 ${t.sortIcon}`}
             >
               + Add sort {sortCriteria.length > 0 ? 'criterion' : ''}
             </button>
@@ -517,7 +529,7 @@ export default function CompanyList({
           ))}
           <button
             onClick={addFilter}
-            className={`text-[10px] font-medium ${t.sortIcon}`}
+            className={`text-[10px] leading-none font-medium py-1 ${t.sortIcon}`}
           >
             + Add filter
           </button>

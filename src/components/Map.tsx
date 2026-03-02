@@ -138,20 +138,36 @@ export default function Map({
   const mapInstanceRef = useRef<L.Map | null>(null)
 
   /**
-   * Strips `title` from Leaflet control buttons and moves the value to `data-tooltip`
-   * so the browser's native tooltip is suppressed while our custom CSS tooltip still works.
+   * Replaces native `title` with `data-tooltip` on Leaflet control buttons.
+   * Uses a MutationObserver so dynamically-created draw toolbar buttons
+   * (which Leaflet adds after initial render) are also caught.
    */
   useEffect(() => {
-    const timer = setTimeout(() => {
-      document.querySelectorAll<HTMLElement>('.leaflet-bar a, .leaflet-draw-toolbar a').forEach((el) => {
-        const title = el.getAttribute('title')
-        if (title) {
-          el.setAttribute('data-tooltip', title)
-          el.removeAttribute('title')
-        }
+    const migrate = (root: Element | Document = document) => {
+      root.querySelectorAll<HTMLElement>('.leaflet-bar a[title], .leaflet-draw-toolbar a[title]').forEach((el) => {
+        el.setAttribute('data-tooltip', el.getAttribute('title')!)
+        el.removeAttribute('title')
       })
-    }, 300)
-    return () => clearTimeout(timer)
+    }
+    const timer = setTimeout(migrate, 200)
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'childList') {
+          m.addedNodes.forEach((n) => {
+            if (n instanceof HTMLElement) migrate(n.parentElement ?? document)
+          })
+        }
+        if (m.type === 'attributes' && m.attributeName === 'title' && m.target instanceof HTMLElement) {
+          const el = m.target
+          if (el.closest('.leaflet-bar, .leaflet-draw-toolbar') && el.getAttribute('title')) {
+            el.setAttribute('data-tooltip', el.getAttribute('title')!)
+            el.removeAttribute('title')
+          }
+        }
+      }
+    })
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['title'] })
+    return () => { clearTimeout(timer); observer.disconnect() }
   }, [])
 
   /**
