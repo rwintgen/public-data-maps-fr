@@ -81,12 +81,12 @@ html, body {
 /* === Save notice slide-in/out === */
 @keyframes save-notice-in {
   0%   { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
-  40%  { opacity: 1; max-height: 40px; margin-bottom: 0.5rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
-  75%  { opacity: 1; max-height: 40px; margin-bottom: 0.5rem; }
+  4%   { opacity: 1; max-height: 40px; margin-bottom: 0.5rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
+  96%  { opacity: 1; max-height: 40px; margin-bottom: 0.5rem; padding-top: 0.375rem; padding-bottom: 0.375rem; }
   100% { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
 }
 .animate-save-notice {
-  animation: save-notice-in 3s ease-in-out forwards;
+  animation: save-notice-in 5s linear forwards;
   overflow: hidden;
 }
 

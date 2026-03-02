@@ -276,7 +276,7 @@ export default function CompanyList({
               onClick={() => {
                 if (!canSave) {
                   setSaveNotice(true)
-                  setTimeout(() => setSaveNotice(false), 3000)
+                  setTimeout(() => setSaveNotice(false), 5000)
                   return
                 }
                 handleSave()
