@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import { type UserTier, TIER_LIMITS } from '@/lib/usage'
 
 interface UsageTrackerProps {
   isDark: boolean
   userTier: UserTier
   searchCount: number
+  aiOverviewCount: number
   savedSearchCount: number
   isLoggedIn: boolean
+  isOpen: boolean
+  onToggle: () => void
 }
 
 interface UsageRow {
@@ -22,8 +24,7 @@ interface UsageRow {
  * Collapsible panel displaying current usage of tier-limited features.
  * Styled to match the SavedAreas section in the settings dropdown.
  */
-export default function UsageTracker({ isDark, userTier, searchCount, savedSearchCount, isLoggedIn }: UsageTrackerProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export default function UsageTracker({ isDark, userTier, searchCount, aiOverviewCount, savedSearchCount, isLoggedIn, isOpen, onToggle }: UsageTrackerProps) {
   const limits = TIER_LIMITS[userTier]
 
   const allRows: UsageRow[] = [
@@ -31,6 +32,12 @@ export default function UsageTracker({ isDark, userTier, searchCount, savedSearc
       label: 'Searches this month',
       current: searchCount,
       limit: limits.searchesPerMonth === Infinity ? null : limits.searchesPerMonth,
+    },
+    {
+      label: 'AI overviews this month',
+      current: aiOverviewCount,
+      limit: limits.aiOverviewsPerMonth === Infinity ? null : limits.aiOverviewsPerMonth === 0 ? null : limits.aiOverviewsPerMonth,
+      unavailable: limits.aiOverviewsPerMonth === 0,
     },
     {
       label: 'Saved searches',
@@ -42,12 +49,6 @@ export default function UsageTracker({ isDark, userTier, searchCount, savedSearc
       label: 'Results per query',
       current: 0,
       limit: limits.resultsPerQuery,
-    },
-    {
-      label: 'AI overviews',
-      current: 0,
-      limit: null,
-      unavailable: !limits.aiOverviews,
     },
   ]
 
@@ -83,7 +84,7 @@ export default function UsageTracker({ isDark, userTier, searchCount, savedSearc
     <div>
       <div className="flex items-center justify-between py-1">
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={onToggle}
           className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.label}`}
         >
           <span>Usage</span>

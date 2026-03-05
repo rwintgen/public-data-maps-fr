@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { CloseButton } from '@/components/ui'
 
 interface Props {
   isDark: boolean
@@ -8,6 +9,9 @@ interface Props {
   onClose: () => void
   onCheckout?: (planId: string, billing: 'monthly' | 'yearly') => void
   onManagePlan?: () => void
+  onRedeemCode?: (code: string) => Promise<{ error?: string }>
+  onRevertDiscount?: () => Promise<void>
+  discountInfo?: { code: string; plan: string; expiresAt: string } | null
   currentTier?: string
 }
 
@@ -15,10 +19,15 @@ interface Props {
  * Premium feature paywall overlay with four plan tiers (Free → Pay-as-you-go → Individual → Enterprise).
  * Highlights the Individual plan as recommended. Animates in/out with scale + opacity.
  */
-export default function Paywall({ isDark, featureName, onClose, onCheckout, currentTier }: Props) {
+export default function Paywall({ isDark, featureName, onClose, onCheckout, onRedeemCode, onRevertDiscount, discountInfo, currentTier }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly')
+  const [discountOpen, setDiscountOpen] = useState(false)
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountLoading, setDiscountLoading] = useState(false)
+  const [discountError, setDiscountError] = useState('')
+  const [discountSuccess, setDiscountSuccess] = useState(false)
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
@@ -114,6 +123,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
     cta: string
     popular: boolean
     isFree: boolean
+    disabled?: boolean
     features: PlanFeature[]
   }
 
@@ -126,7 +136,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
       priceLine: null,
       priceUnit: null,
       priceNote: 'Free forever',
-      cta: 'Current plan',
+      cta: 'Free forever',
       popular: false,
       isFree: true,
       features: [
@@ -145,9 +155,10 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
       priceLine: 'Usage-based',
       priceUnit: null,
       priceNote: null,
-      cta: 'Get started',
+      cta: 'Not available yet',
       popular: false,
       isFree: false,
+      disabled: true,
       features: [
         { text: 'Unlimited searches', included: true },
         { text: '10,000 results per query', included: true },
@@ -216,14 +227,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
               Choose a plan that works for you. Upgrade, downgrade, or cancel anytime.
             </p>
           </div>
-          <button
-            onClick={handleClose}
-            className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${t.closeBtn}`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton onClick={handleClose} isDark={isDark} />
         </div>
 
         {/* Billing toggle */}
@@ -244,6 +248,40 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
             </button>
           </div>
         </div>
+
+        {discountInfo && (
+          <div className={`mx-6 mt-3 flex items-center justify-between rounded-xl border px-4 py-3 ${
+            isDark ? 'bg-violet-500/10 border-violet-500/20' : 'bg-violet-50 border-violet-200'
+          }`}>
+            <div>
+              <p className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {discountInfo.plan.charAt(0).toUpperCase() + discountInfo.plan.slice(1)} plan
+                <span className={`ml-1.5 text-[10px] font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  via code <code className={`font-mono px-1.5 py-0.5 rounded ${isDark ? 'bg-white/10 text-violet-300' : 'bg-violet-100 text-violet-700'}`}>{discountInfo.code}</code>
+                </span>
+              </p>
+              <p className={`text-[10px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                Expires {new Date(discountInfo.expiresAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                {' '}({Math.max(0, Math.ceil((new Date(discountInfo.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days left)
+              </p>
+            </div>
+            {onRevertDiscount && (
+              <button
+                onClick={async () => {
+                  await onRevertDiscount()
+                  handleClose()
+                }}
+                className={`text-[10px] font-medium px-2.5 py-1 rounded-lg border transition-colors ${
+                  isDark
+                    ? 'border-white/10 text-gray-400 hover:text-gray-200 hover:border-white/20'
+                    : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Revert to free
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Plan cards */}
         <div className="grid grid-cols-4 gap-3 px-6 pt-4 pb-2">
@@ -332,22 +370,85 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
               </ul>
 
               <button
-                disabled={plan.isFree || plan.id === currentTier}
+                disabled={(plan.isFree && !discountInfo) || plan.disabled || plan.id === currentTier}
                 onClick={() => {
-                  if (onCheckout && !plan.isFree && plan.id !== currentTier) {
+                  if (plan.isFree && discountInfo && onRevertDiscount) {
+                    onRevertDiscount().then(() => handleClose())
+                    return
+                  }
+                  if (onCheckout && !plan.isFree && !plan.disabled && plan.id !== currentTier) {
                     onCheckout(plan.id, billing)
                   }
                 }}
                 className={`w-full rounded-lg py-2 text-xs font-semibold transition-all border ${
-                  plan.id === currentTier
+                  plan.id === currentTier || (plan.isFree && !discountInfo) || plan.disabled
                     ? t.freeBtn + ' cursor-default'
-                    : plan.isFree ? t.freeBtn + ' cursor-default' : plan.popular ? t.primaryBtn : t.secondaryBtn
+                    : plan.popular ? t.primaryBtn : t.secondaryBtn
                 }`}
               >
-                {plan.id === currentTier ? 'Current plan' : plan.cta}
+                {plan.id === currentTier
+                  ? 'Current plan'
+                  : plan.isFree && discountInfo
+                    ? 'Revert to free plan'
+                    : plan.cta}
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Discount code */}
+        <div className="px-6 pt-2">
+          <button
+            onClick={() => { setDiscountOpen(!discountOpen); setDiscountError('') }}
+            className={`text-[11px] font-medium transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            {discountOpen ? 'Hide' : 'Have a discount code?'}
+          </button>
+          {discountOpen && (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                value={discountCode}
+                onChange={(e) => { setDiscountCode(e.target.value); setDiscountError(''); setDiscountSuccess(false) }}
+                placeholder="Enter code"
+                className={`flex-1 rounded-lg border px-3 py-1.5 text-xs outline-none transition-colors ${
+                  isDark
+                    ? 'bg-white/5 border-white/10 text-white placeholder-gray-600 focus:border-violet-500'
+                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-violet-500'
+                }`}
+              />
+              <button
+                disabled={discountLoading || !discountCode.trim()}
+                onClick={async () => {
+                  if (!onRedeemCode || !discountCode.trim()) return
+                  setDiscountLoading(true)
+                  setDiscountError('')
+                  setDiscountSuccess(false)
+                  const res = await onRedeemCode(discountCode.trim())
+                  setDiscountLoading(false)
+                  if (res.error) {
+                    setDiscountError(res.error)
+                  } else {
+                    setDiscountSuccess(true)
+                    setTimeout(() => handleClose(), 1500)
+                  }
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${
+                  discountLoading || !discountCode.trim()
+                    ? (isDark ? 'border-white/10 text-gray-600 cursor-default' : 'border-gray-200 text-gray-400 cursor-default')
+                    : (isDark ? 'border-white/15 text-gray-300 hover:border-white/30 hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50')
+                }`}
+              >
+                {discountLoading ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+          )}
+          {discountError && (
+            <p className="text-[11px] mt-1.5 text-red-400">{discountError}</p>
+          )}
+          {discountSuccess && (
+            <p className={`text-[11px] mt-1.5 ${isDark ? 'text-green-400' : 'text-green-600'}`}>Code applied! Your plan has been upgraded.</p>
+          )}
         </div>
 
         {/* Mission statement */}

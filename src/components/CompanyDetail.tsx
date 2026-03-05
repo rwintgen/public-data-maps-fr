@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { CloseButton } from '@/components/ui'
 
 interface Props {
   company: any
@@ -83,15 +84,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
               </p>
             )}
           </div>
-          <button
-            onClick={handleClose}
-            className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${t.closeBtn}`}
-            data-tooltip="Close" data-tooltip-pos="left"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton onClick={handleClose} isDark={isDark} />
         </div>
 
         {/* Fields grid */}

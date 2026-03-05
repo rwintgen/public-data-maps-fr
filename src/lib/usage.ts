@@ -16,7 +16,8 @@ export interface TierLimits {
   resultsPerQuery: number
   searchesPerMonth: number
   savedSearches: number
-  aiOverviews: boolean
+  /** Monthly AI overview allowance. 0 = no access, Infinity = unlimited. */
+  aiOverviewsPerMonth: number
 }
 
 export const TIER_LIMITS: Record<UserTier, TierLimits> = {
@@ -24,30 +25,31 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     resultsPerQuery: 5_000,
     searchesPerMonth: 10,
     savedSearches: 5,
-    aiOverviews: false,
+    aiOverviewsPerMonth: 0,
   },
   payg: {
     resultsPerQuery: 10_000,
     searchesPerMonth: Infinity,
     savedSearches: 20,
-    aiOverviews: true,
+    aiOverviewsPerMonth: Infinity,
   },
   individual: {
     resultsPerQuery: 50_000,
     searchesPerMonth: 100,
     savedSearches: Infinity,
-    aiOverviews: true,
+    aiOverviewsPerMonth: 250,
   },
   enterprise: {
     resultsPerQuery: 50_000,
     searchesPerMonth: Infinity,
     savedSearches: Infinity,
-    aiOverviews: true,
+    aiOverviewsPerMonth: Infinity,
   },
 }
 
 interface UsageData {
   searchCount: number
+  aiOverviewCount: number
   monthKey: string
 }
 
@@ -88,7 +90,7 @@ function getUsageData(userKey: string): UsageData {
       if (data.monthKey === month) return data
     }
   } catch {}
-  return { searchCount: 0, monthKey: month }
+  return { searchCount: 0, aiOverviewCount: 0, monthKey: month }
 }
 
 function setUsageData(userKey: string, data: UsageData): void {
@@ -127,7 +129,28 @@ export function getSavedSearchLimit(tier: UserTier): number {
   return TIER_LIMITS[tier].savedSearches
 }
 
-/** Checks whether the tier has AI overview access. */
+/** Returns the current monthly AI overview count for the user. */
+export function getAIOverviewCount(userKey: string): number {
+  return getUsageData(userKey).aiOverviewCount ?? 0
+}
+
+/** Increments the monthly AI overview counter. Returns the new count. */
+export function incrementAIOverviewCount(userKey: string): number {
+  const data = getUsageData(userKey)
+  data.aiOverviewCount = (data.aiOverviewCount ?? 0) + 1
+  setUsageData(userKey, data)
+  return data.aiOverviewCount
+}
+
+/** Checks whether the user can use another AI overview under their tier limit. */
+export function canUseAIOverview(userKey: string, tier: UserTier): boolean {
+  const limit = TIER_LIMITS[tier].aiOverviewsPerMonth
+  if (limit === 0) return false
+  if (limit === Infinity) return true
+  return getAIOverviewCount(userKey) < limit
+}
+
+/** Returns true if the tier has any AI overview access at all. */
 export function canUseAI(tier: UserTier): boolean {
-  return TIER_LIMITS[tier].aiOverviews
+  return TIER_LIMITS[tier].aiOverviewsPerMonth > 0
 }

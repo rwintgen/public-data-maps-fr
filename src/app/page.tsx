@@ -10,6 +10,7 @@ import CompanyDetail from '@/components/CompanyDetail'
 import ExportModal from '@/components/ExportModal'
 import ColumnConfig from '@/components/ColumnConfig'
 import Paywall from '@/components/Paywall'
+import { CloseButton } from '@/components/ui'
 import UsageTracker from '@/components/UsageTracker'
 import { applyPresets } from '@/lib/presets'
 import {
@@ -21,6 +22,9 @@ import {
   getSearchCount,
   getSavedSearchLimit,
   canUseAI,
+  canUseAIOverview,
+  getAIOverviewCount,
+  incrementAIOverviewCount,
   TIER_LIMITS,
 } from '@/lib/usage'
 import { auth, db } from '@/lib/firebase'
@@ -60,9 +64,20 @@ export default function Home() {
   const profileLoaded = useRef(false)
   const searchAbort = useRef<AbortController | null>(null)
   const [prefsSaved, setPrefsSaved] = useState(false)
+  const [deleteEmail, setDeleteEmail] = useState('')
+  const [deleteActive, setDeleteActive] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(() => {
+    try { const v = localStorage.getItem('pdm_settings_open'); return v === null ? true : v === '1' } catch { return true }
+  })
+  const [usageOpen, setUsageOpen] = useState(() => {
+    try { return localStorage.getItem('pdm_usage_open') === '1' } catch { return false }
+  })
+  const [revertConfirmOpen, setRevertConfirmOpen] = useState(false)
   const [savedSearchCount, setSavedSearchCount] = useState(0)
   const [searchCount, setSearchCount] = useState(0)
+  const [aiOverviewCount, setAIOverviewCount] = useState(0)
   const [userTier, setUserTier] = useState<UserTier>('free')
+  const [discountInfo, setDiscountInfo] = useState<{ code: string; plan: string; expiresAt: string } | null>(null)
 
   const prefsKey = (uid: string) => `prefs_${uid}`
 
@@ -92,6 +107,7 @@ export default function Home() {
   useEffect(() => {
     const uKey = getUserKey(user?.uid ?? null)
     setSearchCount(getSearchCount(uKey))
+    setAIOverviewCount(getAIOverviewCount(uKey))
     if (!user) return
     user.getIdToken().then((token) =>
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
@@ -101,10 +117,14 @@ export default function Home() {
             setSearchCount(data.searchCount)
             const uKey2 = getUserKey(user.uid)
             try {
-              localStorage.setItem(`pdm_usage_${uKey2}`, JSON.stringify({ searchCount: data.searchCount, monthKey: data.monthKey }))
+              localStorage.setItem(`pdm_usage_${uKey2}`, JSON.stringify({ searchCount: data.searchCount, aiOverviewCount: data.aiOverviewCount ?? 0, monthKey: data.monthKey }))
             } catch {}
           }
+          if (data && typeof data.aiOverviewCount === 'number') {
+            setAIOverviewCount(data.aiOverviewCount)
+          }
           if (data?.tier) setUserTier(data.tier as UserTier)
+          setDiscountInfo(data?.discount ?? null)
         })
         .catch(() => {})
     ).catch(() => {})
@@ -188,6 +208,8 @@ export default function Home() {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false)
+        setDeleteActive(false)
+        setDeleteEmail('')
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -351,19 +373,42 @@ export default function Home() {
 
   const handleSignOut = async () => {
     await signOut(auth)
+    setUserTier('free')
+    setDiscountInfo(null)
   }
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!user || deleteEmail !== user.email) return
+    try {
+      const token = await user.getIdToken()
+      await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      await signOut(auth)
+      setUserTier('free')
+      setDiscountInfo(null)
+      setDeleteActive(false)
+      setDeleteEmail('')
+      setProfileOpen(false)
+    } catch {}
+  }, [user, deleteEmail])
 
   const handleExpand = useCallback((company: any) => {
     setExpandedCompany(company)
   }, [])
 
   const handleAskAI = useCallback((_company: any) => {
-    if (!canUseAI(userTier)) {
-      setPaywallFeature('AI Overview')
+    const uKey = getUserKey(user?.uid ?? null)
+    if (!canUseAIOverview(uKey, userTier)) {
+      const limit = TIER_LIMITS[userTier].aiOverviewsPerMonth
+      setPaywallFeature(limit === 0 ? 'AI Overview' : `more than ${limit} AI overviews per month`)
       return
     }
+    const newCount = incrementAIOverviewCount(uKey)
+    setAIOverviewCount(newCount)
     console.log('AI overview for:', _company)
-  }, [userTier])
+  }, [userTier, user])
 
   /** Redirect the user to a Stripe Checkout session for the selected plan. */
   const handleCheckout = useCallback(async (planId: string, billing: 'monthly' | 'yearly') => {
@@ -383,6 +428,10 @@ export default function Home() {
   /** Redirect paid users to the Stripe Customer Portal for subscription management. */
   const handleManagePlan = useCallback(async () => {
     if (!user) return
+    if (discountInfo) {
+      setPaywallFeature('plan')
+      return
+    }
     try {
       const token = await user.getIdToken()
       const res = await fetch('/api/portal', {
@@ -391,6 +440,48 @@ export default function Home() {
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
+    } catch {}
+  }, [user, discountInfo])
+
+  /** Redeem a discount code — called from the Paywall component. */
+  const handleRedeemCode = useCallback(async (code: string): Promise<{ error?: string }> => {
+    if (!user) { setAuthOpen(true); return { error: 'Please sign in first' } }
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch('/api/discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { error: data.error ?? 'Failed to redeem code' }
+      if (data.plan) setUserTier(data.plan)
+      if (data.plan) setDiscountInfo({ code, plan: data.plan, expiresAt: data.expiresAt })
+      return {}
+    } catch {
+      return { error: 'Network error — please try again' }
+    }
+  }, [user])
+
+  /** Revert a discount-based upgrade back to the free tier. */
+  const handleRevertDiscount = useCallback(async () => {
+    if (!user) return
+    setRevertConfirmOpen(true)
+  }, [user])
+
+  /** Actually performs the revert after user confirms. */
+  const confirmRevertDiscount = useCallback(async () => {
+    if (!user) return
+    try {
+      const token = await user.getIdToken()
+      await fetch('/api/discount/revert', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setUserTier('free')
+      setDiscountInfo(null)
+      setRevertConfirmOpen(false)
+      setPaywallFeature(null)
     } catch {}
   }, [user])
 
@@ -538,6 +629,10 @@ export default function Home() {
                 >
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="" className="w-full h-full rounded-lg object-cover" />
+                  ) : user ? (
+                    <span className="w-full h-full rounded-lg bg-violet-600 flex items-center justify-center text-white text-xs font-semibold">
+                      {(user.displayName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                    </span>
                   ) : (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -549,7 +644,13 @@ export default function Home() {
                     {user && (
                       <div className={`px-4 py-3 border-b ${d.tabBorder}`}>
                         <div className="flex items-center gap-2.5">
-                          {user.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />}
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
+                          ) : (
+                            <span className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                              {(user.displayName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                            </span>
+                          )}
                           <div className="min-w-0 flex-1">
                             <p className={`text-sm font-medium truncate ${d.title}`}>{user.displayName ?? 'User'}</p>
                             {user.email && <p className={`text-[11px] truncate ${d.dropdownLabel}`}>{user.email}</p>}
@@ -558,82 +659,171 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div className="px-4 py-3 space-y-3">
-                      <div>
-                        <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Theme</div>
-                        <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
-                          {([
-                            { mode: 'system' as const, label: 'Auto', icon: (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                            )},
-                            { mode: 'light' as const, label: 'Light', icon: (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                              </svg>
-                            )},
-                            { mode: 'dark' as const, label: 'Dark', icon: (
-                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-                              </svg>
-                            )},
-                          ]).map(({ mode, label, icon }) => (
-                            <button
-                              key={mode}
-                              onClick={() => setThemeMode(mode)}
-                              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-colors ${
-                                themeMode === mode
-                                  ? isDark ? 'bg-white/15 text-white' : 'bg-violet-50 text-violet-700'
-                                  : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              {icon}
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                    <div className={`border-t ${d.tabBorder}`}>
+                      <div className="px-3 py-2.5 space-y-3">
+                        <button
+                          onClick={() => { const next = !settingsOpen; setSettingsOpen(next); try { localStorage.setItem('pdm_settings_open', next ? '1' : '0') } catch {} }}
+                          className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800'}`}
+                        >
+                          <span>Settings</span>
+                          <svg className={`w-3 h-3 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {settingsOpen && (
+                          <div className="space-y-3">
+                            <div>
+                              <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Theme</div>
+                              <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                                {([
+                                  { mode: 'system' as const, label: 'Auto', icon: (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                  )},
+                                  { mode: 'light' as const, label: 'Light', icon: (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                                    </svg>
+                                  )},
+                                  { mode: 'dark' as const, label: 'Dark', icon: (
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                                    </svg>
+                                  )},
+                                ]).map(({ mode, label, icon }) => (
+                                  <button
+                                    key={mode}
+                                    onClick={() => setThemeMode(mode)}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-colors ${
+                                      themeMode === mode
+                                        ? isDark ? 'bg-white/15 text-white' : 'bg-violet-50 text-violet-700'
+                                        : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {icon}
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
 
-                      <div>
-                        <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Map Style</div>
-                        <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
-                          {([
-                            { style: 'default' as const, label: 'Default' },
-                            { style: 'themed' as const, label: 'Themed' },
-                            { style: 'satellite' as const, label: 'Satellite' },
-                          ]).map(({ style, label }) => (
-                            <button
-                              key={style}
-                              onClick={() => setMapStyle(style)}
-                              className={`flex-1 py-1.5 text-[11px] font-medium transition-colors ${
-                                mapStyle === style
-                                  ? isDark ? 'bg-white/15 text-white' : 'bg-violet-50 text-violet-700'
-                                  : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                            <div>
+                              <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Map Style</div>
+                              <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                                {([
+                                  { style: 'default' as const, label: 'Default' },
+                                  { style: 'themed' as const, label: 'Themed' },
+                                  { style: 'satellite' as const, label: 'Satellite' },
+                                ]).map(({ style, label }) => (
+                                  <button
+                                    key={style}
+                                    onClick={() => setMapStyle(style)}
+                                    className={`flex-1 py-1.5 text-[11px] font-medium transition-colors ${
+                                      mapStyle === style
+                                        ? isDark ? 'bg-white/15 text-white' : 'bg-violet-50 text-violet-700'
+                                        : isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-white/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
 
-                      <div>
-                        <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Visible Fields</div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { setFieldsModalTab('list'); setProfileOpen(false) }}
-                            className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                          >
-                            List ({listColumns.length})
-                          </button>
-                          <button
-                            onClick={() => { setFieldsModalTab('popup'); setProfileOpen(false) }}
-                            className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                          >
-                            Popup ({popupColumns.length})
-                          </button>
-                        </div>
+                            <div>
+                              <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Visible Fields</div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => { setFieldsModalTab('list'); setProfileOpen(false) }}
+                                  className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                  List ({listColumns.length})
+                                </button>
+                                <button
+                                  onClick={() => { setFieldsModalTab('popup'); setProfileOpen(false) }}
+                                  className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                  Popup ({popupColumns.length})
+                                </button>
+                              </div>
+                            </div>
+
+                            {user && (
+                              <div>
+                                <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Plan</div>
+                                <button
+                                  onClick={() => {
+                                    if (userTier !== 'free') {
+                                      handleManagePlan()
+                                      setProfileOpen(false)
+                                    } else {
+                                      setPaywallFeature('plan')
+                                      setProfileOpen(false)
+                                    }
+                                  }}
+                                  className={`w-full text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${
+                                    isDark
+                                      ? 'border-white/10 text-gray-300 hover:bg-white/5 hover:border-white/20'
+                                      : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                                  }`}
+                                >
+                                  {userTier === 'free' ? 'Upgrade plan' : 'Manage plan'}
+                                </button>
+                              </div>
+                            )}
+
+                            {user && userTier !== 'enterprise' && (
+                              <div>
+                                <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${d.dropdownLabel}`}>Danger Zone</div>
+                                {!deleteActive ? (
+                                  <button
+                                    onClick={() => setDeleteActive(true)}
+                                    className={`text-xs font-medium transition-colors ${d.signOutBtn}`}
+                                  >
+                                    Delete account
+                                  </button>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    <p className={`text-[11px] ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+                                      Type your email to confirm deletion
+                                    </p>
+                                    <input
+                                      type="email"
+                                      value={deleteEmail}
+                                      onChange={(e) => setDeleteEmail(e.target.value)}
+                                      placeholder={user.email ?? 'your@email.com'}
+                                      className={`w-full rounded-lg border px-2.5 py-1.5 text-xs outline-none transition-all ${
+                                        isDark
+                                          ? 'bg-white/5 border-red-500/50 text-white placeholder-gray-600 focus:border-red-400'
+                                          : 'bg-gray-50 border-red-300 text-gray-900 placeholder-gray-400 focus:border-red-500'
+                                      }`}
+                                    />
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={handleDeleteAccount}
+                                        disabled={deleteEmail !== user.email}
+                                        className={`text-xs font-medium transition-colors ${
+                                          deleteEmail === user.email
+                                            ? isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'
+                                            : isDark ? 'text-gray-700 cursor-not-allowed' : 'text-gray-300 cursor-not-allowed'
+                                        }`}
+                                      >
+                                        Delete permanently
+                                      </button>
+                                      <button
+                                        onClick={() => { setDeleteActive(false); setDeleteEmail('') }}
+                                        className={`text-xs font-medium transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -643,27 +833,12 @@ export default function Home() {
                           isDark={isDark}
                           userTier={userTier}
                           searchCount={searchCount}
+                          aiOverviewCount={aiOverviewCount}
                           savedSearchCount={savedSearchCount}
                           isLoggedIn={!!user}
+                          isOpen={usageOpen}
+                          onToggle={() => { const next = !usageOpen; setUsageOpen(next); try { localStorage.setItem('pdm_usage_open', next ? '1' : '0') } catch {} }}
                         />
-                        <button
-                          onClick={() => {
-                            if (userTier !== 'free') {
-                              handleManagePlan()
-                              setProfileOpen(false)
-                            } else {
-                              setPaywallFeature('plan')
-                              setProfileOpen(false)
-                            }
-                          }}
-                          className={`w-full text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${
-                            isDark
-                              ? 'border-white/10 text-gray-300 hover:bg-white/5 hover:border-white/20'
-                              : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
-                          }`}
-                        >
-                          {userTier === 'free' ? 'Upgrade plan' : 'Manage plan'}
-                        </button>
                       </div>
                     </div>
 
@@ -688,7 +863,7 @@ export default function Home() {
                             />
                           </div>
                         </div>
-                        <div className={`px-4 py-2.5 border-t ${d.tabBorder}`}>
+                        <div className={`px-3 py-2.5 border-t ${d.tabBorder}`}>
                           <div className="flex items-center justify-between">
                             <button
                               onClick={handleSignOut}
@@ -706,7 +881,7 @@ export default function Home() {
                         </div>
                       </>
                     ) : (
-                      <div className={`px-4 py-3 border-t ${d.tabBorder}`}>
+                      <div className={`px-3 py-3 border-t ${d.tabBorder}`}>
                         <button
                           onClick={() => { setAuthOpen(true); setProfileOpen(false) }}
                           className={`w-full flex items-center justify-center gap-2 text-sm font-medium border rounded-lg px-3 py-2 transition-all ${d.signInBtn}`}
@@ -810,7 +985,50 @@ export default function Home() {
         onClose={() => setPaywallFeature(null)}
         currentTier={userTier}
         onCheckout={handleCheckout}
+        onRedeemCode={handleRedeemCode}
+        onRevertDiscount={handleRevertDiscount}
+        discountInfo={discountInfo}
       />
+    )}
+
+    {revertConfirmOpen && (
+      <div
+        className={`fixed inset-0 z-[9600] flex items-center justify-center backdrop-blur-sm ${isDark ? 'bg-black/50' : 'bg-black/30'}`}
+        onMouseDown={(e) => { if (e.target === e.currentTarget) setRevertConfirmOpen(false) }}
+      >
+        <div className={`w-[360px] rounded-2xl border shadow-2xl p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Revert to free plan?</h3>
+            <CloseButton onClick={() => setRevertConfirmOpen(false)} isDark={isDark} />
+          </div>
+          <div className={`text-xs leading-relaxed space-y-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p>This action is <strong className={isDark ? 'text-white' : 'text-gray-900'}>definitive</strong>. Your discount code will be marked as used and <strong className={isDark ? 'text-white' : 'text-gray-900'}>cannot be redeemed again</strong>.</p>
+            <p>You will immediately lose access to premium features and revert to the free plan limits.</p>
+          </div>
+          <div className="flex gap-2 mt-5">
+            <button
+              onClick={() => setRevertConfirmOpen(false)}
+              className={`flex-1 text-xs font-medium py-2 rounded-lg border transition-colors ${
+                isDark
+                  ? 'border-white/10 text-gray-300 hover:bg-white/5'
+                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Keep my plan
+            </button>
+            <button
+              onClick={confirmRevertDiscount}
+              className={`flex-1 text-xs font-medium py-2 rounded-lg border transition-colors ${
+                isDark
+                  ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                  : 'border-red-200 text-red-600 hover:bg-red-50'
+              }`}
+            >
+              Revert to free
+            </button>
+          </div>
+        </div>
+      </div>
     )}
 
     {fieldsModalTab && (

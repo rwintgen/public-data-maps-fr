@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CloseButton, Checkbox } from '@/components/ui'
 
 interface Props {
   columns: string[]
@@ -72,11 +73,7 @@ export default function ColumnConfig({
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h3 className={`text-sm font-semibold ${t.title}`}>Visible Columns</h3>
-        <button onClick={onClose} className={`transition-colors ${t.closeBtn}`}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <CloseButton onClick={onClose} isDark={isDark} />
       </div>
 
       {/* Tabs */}
@@ -112,18 +109,8 @@ export default function ColumnConfig({
               onClick={() => toggle(col)}
               className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition-colors ${t.item}`}
             >
-              <div
-                className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center border transition-all ${
-                  isActive ? t.checkActive : t.check
-                }`}
-              >
-                {isActive && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-              <span className={`text-xs truncate ${t.itemText}`}>{col}</span>
+              <Checkbox checked={isActive} isDark={isDark} />
+              <span className={`text-[11px] truncate ${t.itemText}`}>{col}</span>
             </button>
           )
         })}

@@ -26,12 +26,27 @@ export async function GET(req: NextRequest) {
 
     const usageData = usageSnap.exists ? usageSnap.data()! : {}
     const searchCount = usageData.monthKey === month ? (usageData.searchCount ?? 0) : 0
+    const aiOverviewCount = usageData.monthKey === month ? (usageData.aiOverviewCount ?? 0) : 0
 
     const profileData = profileSnap.exists ? profileSnap.data()! : {}
-    const tier = profileData.tier ?? 'free'
+    const stripeTier = profileData.tier ?? 'free'
     const subscriptionStatus = profileData.subscriptionStatus ?? null
 
-    return NextResponse.json({ searchCount, monthKey: month, tier, subscriptionStatus })
+    let effectiveTier = stripeTier
+    let discount = null
+    if (effectiveTier === 'free') {
+      const discountExp = profileData.discountExpiresAt?.toDate?.()
+      if (discountExp && discountExp > new Date() && profileData.discountPlan) {
+        effectiveTier = profileData.discountPlan
+        discount = {
+          code: profileData.discountCode ?? null,
+          plan: profileData.discountPlan,
+          expiresAt: discountExp.toISOString(),
+        }
+      }
+    }
+
+    return NextResponse.json({ searchCount, aiOverviewCount, monthKey: month, tier: effectiveTier, subscriptionStatus, discount })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -9,6 +9,7 @@ import {
   updateProfile,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { CloseButton } from '@/components/ui'
 
 interface Props {
   isDark: boolean
@@ -121,7 +122,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
   return (
     <div
       ref={overlayRef}
-      className={`fixed inset-0 z-[9000] flex items-center justify-center backdrop-blur-sm ${t.overlay}`}
+      className={`fixed inset-0 z-[9800] flex items-center justify-center backdrop-blur-sm ${t.overlay}`}
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       <div className={`w-[360px] rounded-2xl border shadow-2xl p-6 ${t.modal}`}>
@@ -137,15 +138,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
               </button>
             ))}
           </div>
-          <button
-            onClick={onClose}
-            className={`mb-2 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} ${t.closeBtn}`}
-            data-tooltip="Close" data-tooltip-pos="left"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton onClick={onClose} isDark={isDark} className="mb-2" />
         </div>
 
         <form onSubmit={handleEmailAuth} className="space-y-3">

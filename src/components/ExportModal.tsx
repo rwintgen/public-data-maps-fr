@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { CloseButton, Checkbox } from '@/components/ui'
 
 interface Props {
   companies: any[]
@@ -85,7 +86,7 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
         allBtn: 'text-gray-600 hover:text-gray-400',
         formatBtn: 'text-gray-400 border-white/10 hover:border-white/20',
         formatActive: 'text-gray-900 bg-gray-200 border-gray-200',
-        exportBtn: 'bg-white hover:bg-gray-200 text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed',
+        exportBtn: 'bg-white hover:bg-gray-200 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed',
         divider: 'border-white/5',
       }
     : {
@@ -101,7 +102,7 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
         allBtn: 'text-gray-400 hover:text-gray-600',
         formatBtn: 'text-gray-500 border-gray-200 hover:border-gray-300',
         formatActive: 'text-white bg-violet-600 border-violet-600',
-        exportBtn: 'bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:cursor-not-allowed',
+        exportBtn: 'bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 disabled:cursor-not-allowed',
         divider: 'border-gray-100',
       }
 
@@ -118,15 +119,7 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
             <h2 className={`text-base font-semibold ${t.title}`}>Export Results</h2>
             <p className={`text-xs mt-0.5 ${t.subtitle}`}>{companies.length} companies</p>
           </div>
-          <button
-            onClick={onClose}
-            className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${t.closeBtn}`}
-            data-tooltip="Close" data-tooltip-pos="left"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton onClick={onClose} isDark={isDark} />
         </div>
 
         {/* Format selection */}
@@ -162,13 +155,7 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
                 onClick={() => toggleCol(col)}
                 className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${t.colItem}`}
               >
-                <div className={`w-3.5 h-3.5 rounded flex-shrink-0 flex items-center justify-center border transition-all ${isOn ? t.checkActive : t.check}`}>
-                  {isOn && (
-                    <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
+                <Checkbox checked={isOn} isDark={isDark} />
                 <span className="text-[11px] truncate">{col}</span>
               </button>
             )

@@ -39,8 +39,10 @@ When adding or editing themed UI, follow these rules to keep the app visually co
 - **No blue in dark mode.** All interactive accents (active tabs, checkboxes, buttons, focus rings) must use gray/white tones. Blue accents are only used in light mode.
 - **Primary actions in dark mode** use `bg-white text-gray-900` (inverted) or a subtle `bg-white/10` style — never colored backgrounds.
 - **Modal overlay** — always `bg-black/50` dark, `bg-black/30` light. Use `backdrop-blur-sm`.
-- **Close buttons** — all modals use a `w-7 h-7 rounded-lg` button with a `w-4 h-4` SVG cross icon, positioned in a flex row header.
-- **Checkbox active state** — `border-gray-400 bg-gray-400` dark, `border-blue-600 bg-blue-600` light.
+- **Close buttons** — use `<CloseButton>` from `src/components/ui.tsx`. All modals use `w-7 h-7 rounded-lg` with a `w-4 h-4` SVG cross icon.
+- **Checkboxes** — use `<Checkbox>` from `src/components/ui.tsx`. Standard size is `w-3.5 h-3.5 rounded` with a `w-2 h-2` checkmark.
+- **Checkbox active state** — `border-gray-400 bg-gray-400` dark, `border-violet-600 bg-violet-600` light.
+- **Disabled buttons** — always use `disabled:opacity-50 disabled:cursor-not-allowed`.
 - **Tab active indicator** — `border-white/60` dark, `border-blue-600` light.
 - **Input focus** — `focus:border-white/30` dark, `focus:border-blue-400` light.
 - Before adding a new color token, check existing components for the canonical value to avoid drift.
@@ -64,6 +66,7 @@ src/
     SearchBar.tsx     ← Nominatim geocoding
     AuthModal.tsx     ← Firebase Auth (Google + email/password)
     ExportModal.tsx   ← CSV/JSON export
+    ui.tsx            ← Shared UI primitives (CloseButton, Checkbox)
   lib/
     firebase.ts       ← Firebase client SDK init (git-ignored)
     db.ts             ← PostgreSQL connection pool (Cloud SQL connector)

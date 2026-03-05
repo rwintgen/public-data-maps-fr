@@ -73,7 +73,15 @@ async function enforceAndIncrementSearchCount(token: string): Promise<number> {
   const month = getMonthKey()
 
   const profileSnap = await getAdminDb().collection('userProfiles').doc(uid).get()
-  const tier: UserTier = profileSnap.exists ? (profileSnap.data()?.tier ?? 'free') : 'free'
+  let tier: UserTier = profileSnap.exists ? (profileSnap.data()?.tier ?? 'free') : 'free'
+
+  if (tier === 'free' && profileSnap.exists) {
+    const data = profileSnap.data()!
+    const discountExp = data.discountExpiresAt?.toDate?.()
+    if (discountExp && discountExp > new Date() && data.discountPlan) {
+      tier = data.discountPlan as UserTier
+    }
+  }
 
   const docRef = getAdminDb().collection('userUsage').doc(uid)
   const limit = TIER_LIMITS[tier].searchesPerMonth
