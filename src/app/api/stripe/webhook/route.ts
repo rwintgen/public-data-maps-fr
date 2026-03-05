@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, tierFromPriceId } from '@/lib/stripe'
+import { getStripe, tierFromPriceId } from '@/lib/stripe'
 import { getAdminDb } from '@/lib/firebase-admin'
 import type Stripe from 'stripe'
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET)
+    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET)
   } catch (err: any) {
     console.error('[stripe-webhook] Signature verification failed:', err.message)
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         : session.subscription?.id
 
       if (subscriptionId) {
-        const sub = await stripe.subscriptions.retrieve(subscriptionId)
+        const sub = await getStripe().subscriptions.retrieve(subscriptionId)
         const priceId = sub.items.data[0]?.price.id
         const tier = tierFromPriceId(priceId ?? '') ?? 'free'
 

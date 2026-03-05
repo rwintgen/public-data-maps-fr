@@ -367,7 +367,7 @@ export default function Home() {
 
   /** Redirect the user to a Stripe Checkout session for the selected plan. */
   const handleCheckout = useCallback(async (planId: string, billing: 'monthly' | 'yearly') => {
-    if (!user) { setShowAuth(true); return }
+    if (!user) { setAuthOpen(true); return }
     try {
       const token = await user.getIdToken()
       const res = await fetch('/api/checkout', {

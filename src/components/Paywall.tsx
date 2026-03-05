@@ -151,6 +151,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, curr
       features: [
         { text: 'First 50,000 results free', included: true },
         { text: 'Unlimited searches', included: true },
+        { text: 'AI company overviews', included: true },
         { text: '10,000 results per query', included: true },
         { text: '20 saved searches', included: true },
         { text: 'Pay-per-use after free tier', included: true },

@@ -1,17 +1,24 @@
 /**
  * Server-side Stripe client singleton.
  * Imported only from API routes — never from client components.
+ * Lazily initialised to avoid build-time crashes when STRIPE_SECRET_KEY is absent.
  */
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.warn('[stripe] STRIPE_SECRET_KEY not set — payment features will be disabled.')
-}
+let _stripe: Stripe | null = null
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
-})
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not set')
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2026-02-25.clover',
+      typescript: true,
+    })
+  }
+  return _stripe
+}
 
 /** Maps plan IDs used in the app to their Stripe price IDs per billing interval. */
 export const PRICE_IDS: Record<string, Record<string, string | undefined>> = {

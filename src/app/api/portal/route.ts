@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 
 /**
  * POST: Creates a Stripe Customer Portal session so the user can
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get('origin') ?? 'http://localhost:3000'
 
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripe().billingPortal.sessions.create({
     customer: customerId,
     return_url: origin,
   })
