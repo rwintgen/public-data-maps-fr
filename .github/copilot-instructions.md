@@ -93,7 +93,8 @@ scripts/
 3. **Check the roadmap** at the bottom of the README and tick off completed items.
 4. **Do not introduce new inline comments** that merely describe the next line of code.
 5. **Test the build** (`npm run build`) — the project deploys via Firebase App Hosting which runs a production build.
-6. **Keep the CSV fallback working** — any changes to `route.ts` must preserve the CSV path for contributors without a database.
+6. **Do not push your changes** but only commit them only when you get the confirmation from the user that a change you made is working.
+7. **Keep the CSV fallback working** — any changes to `route.ts` must preserve the CSV path for contributors without a database.
 
 ## Common Tasks
 

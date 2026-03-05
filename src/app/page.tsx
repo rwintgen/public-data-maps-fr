@@ -9,6 +9,7 @@ import AuthModal from '@/components/AuthModal'
 import CompanyDetail from '@/components/CompanyDetail'
 import ExportModal from '@/components/ExportModal'
 import ColumnConfig from '@/components/ColumnConfig'
+import Paywall from '@/components/Paywall'
 import { applyPresets } from '@/lib/presets'
 import { auth, db } from '@/lib/firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
@@ -38,6 +39,7 @@ export default function Home() {
   const [authOpen, setAuthOpen] = useState(false)
   const [expandedCompany, setExpandedCompany] = useState<any>(null)
   const [exportOpen, setExportOpen] = useState(false)
+  const [paywallFeature, setPaywallFeature] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [searchExpanded, setSearchExpanded] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -271,8 +273,8 @@ export default function Home() {
     setExpandedCompany(company)
   }, [])
 
-  const handleAskAI = useCallback((company: any) => {
-    console.log('Ask AI about:', company)
+  const handleAskAI = useCallback((_company: any) => {
+    setPaywallFeature('AI Overview')
   }, [])
 
   const d = isDark
@@ -643,6 +645,14 @@ export default function Home() {
         displayColumns={displayColumns}
         isDark={isDark}
         onClose={() => setExportOpen(false)}
+      />
+    )}
+
+    {paywallFeature && (
+      <Paywall
+        isDark={isDark}
+        featureName={paywallFeature}
+        onClose={() => setPaywallFeature(null)}
       />
     )}
 

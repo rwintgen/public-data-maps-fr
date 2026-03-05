@@ -12,7 +12,7 @@ A full-stack web app to draw a custom area on a map of France and instantly retr
   - Filter operators: `contains`, `equals`, `empty`, with a NOT toggle
   - Sort by any column, ascending or descending
 - **Company detail modal** — full field view for any establishment
-- **Map markers** — click a pin to see a quick popup; click again to open the detail modal
+- **Map markers** — up to 50 000 pins rendered via native `leaflet.markercluster`; click a pin to see a quick popup, click again to open the detail modal
 - **Export** — download current results as CSV or JSON, with field selection
 - **Saved searches** — sign in to save, restore, rename, and delete named searches (persisted in Firestore)
 - **Map styles** — Default (OpenStreetMap), Themed (CartoCDN light/dark), Satellite (Esri)
@@ -27,7 +27,7 @@ A full-stack web app to draw a custom area on a map of France and instantly retr
 |-------------|---------------------------------------------------------|
 | Framework   | Next.js 14 (App Router, TypeScript)                     |
 | Styling     | Tailwind CSS 3                                          |
-| Map         | Leaflet + react-leaflet + leaflet-draw                  |
+| Map         | Leaflet + react-leaflet + leaflet-draw + leaflet.markercluster |
 | Auth        | Firebase Authentication (Google + email/password)       |
 | User data   | Cloud Firestore (preferences, saved searches)           |
 | Geo queries | Cloud SQL (PostgreSQL 15) + PostGIS                     |
@@ -210,8 +210,8 @@ This app requires server-side rendering (Next.js API routes handle the search). 
 - [x] PostGIS backend for full-dataset performance
 - [x] Deploy via Firebase App Hosting
 - [ ] Import full SIRENE dataset into Cloud SQL
-- [ ] Increase result cap beyond 5 000 (pagination or streaming)
-- [ ] Cluster map pins for performance with large result sets
+- [x] Increase result cap beyond 5 000 — now up to 50 000 results
+- [x] Cluster map pins for performance with large result sets
 - [ ] Audit and fix all preset filter labels
 - [ ] Add possibility to create custom filter labels
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)

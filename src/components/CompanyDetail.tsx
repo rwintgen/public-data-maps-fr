@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface Props {
   company: any
@@ -12,10 +12,27 @@ interface Props {
 
 /**
  * Full-screen modal showing all JSONB fields for a single establishment.
- * Includes an AI inquiry button (currently a placeholder).
+ * Animates in/out with scale + opacity. Includes an AI inquiry button gated by paywall.
  */
 export default function CompanyDetail({ company, displayColumns, isDark, onClose, onAskAI }: Props) {
   const [aiLoading, setAiLoading] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true))
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  const handleClose = () => {
+    setVisible(false)
+    setTimeout(onClose, 200)
+  }
 
   const fields = company.fields ?? {}
 
@@ -49,10 +66,11 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
 
   return (
     <div
-      className={`fixed inset-0 z-[8000] flex items-center justify-center backdrop-blur-sm ${t.overlay}`}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+      ref={overlayRef}
+      className={`fixed inset-0 z-[8000] flex items-center justify-center backdrop-blur-sm transition-opacity duration-200 ${t.overlay} ${visible ? 'opacity-100' : 'opacity-0'}`}
+      onMouseDown={(e) => { if (e.target === overlayRef.current) handleClose() }}
     >
-      <div className={`relative w-[440px] max-h-[80vh] flex flex-col rounded-2xl border shadow-2xl ${t.bg}`}>
+      <div className={`relative w-[440px] max-h-[80vh] flex flex-col rounded-2xl border shadow-2xl transition-all duration-200 ${t.bg} ${visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
         {/* Header */}
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div className="min-w-0 flex-1 pr-4">
@@ -66,7 +84,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
             )}
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${t.closeBtn}`}
             data-tooltip="Close" data-tooltip-pos="left"
           >
