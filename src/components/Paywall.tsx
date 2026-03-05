@@ -168,7 +168,7 @@ export default function Paywall({ isDark, featureName, onClose }: Props) {
         { text: '100 searches / month', included: true },
         { text: '50,000 results per query', included: true },
         { text: 'Unlimited saved searches', included: true },
-        { text: 'AI company overviews', included: true },
+        { text: '250 AI company overviews', included: true },
         { text: 'All export formats', included: true },
       ],
     },
@@ -234,7 +234,7 @@ export default function Paywall({ isDark, featureName, onClose }: Props) {
               className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all flex items-center gap-1.5 ${billing === 'yearly' ? t.toggleActive : t.toggleInactive}`}
             >
               Yearly
-              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${t.saveBadge}`}>−17%</span>
+              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${t.saveBadge}`}>−20%</span>
             </button>
           </div>
         </div>
