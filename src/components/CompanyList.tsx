@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, memo } from 'react'
-import { PRESET_FILTERS, PRESET_GROUPS, applyPresets } from '@/lib/presets'
+import { PRESET_FILTERS, PRESET_GROUPS, applyPresets, type CustomPreset } from '@/lib/presets'
+import { canExportPremium, type UserTier } from '@/lib/usage'
 
 interface Filter {
   column: string
@@ -62,10 +63,15 @@ function CompanyList({
   onFiltersChange,
   activePresets,
   onPresetsChange,
+  customPresets,
+  onCustomPresetsChange,
+  disabledPresetIds = [],
+  userTier,
   canSave,
   hasSearchArea,
   onSaveSearch,
   onSignInPrompt,
+  onPaywall,
 }: {
   companies: any[]
   selectedCompany: any
@@ -80,10 +86,15 @@ function CompanyList({
   onFiltersChange: (f: Filter[]) => void
   activePresets: string[]
   onPresetsChange: (ids: string[]) => void
+  customPresets: CustomPreset[]
+  onCustomPresetsChange: (presets: CustomPreset[]) => void
+  disabledPresetIds?: string[]
+  userTier: UserTier
   canSave: boolean
   hasSearchArea: boolean
   onSaveSearch: (name: string) => Promise<void>
   onSignInPrompt: () => void
+  onPaywall: (feature: string) => void
 }) {
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
@@ -94,6 +105,12 @@ function CompanyList({
   const [saveName, setSaveName] = useState('')
   const [chipsExpanded, setChipsExpanded] = useState(false)
   const [saveNotice, setSaveNotice] = useState(false)
+  const [customLabelForm, setCustomLabelForm] = useState(false)
+  const [newLabelName, setNewLabelName] = useState('')
+  const [newLabelColumn, setNewLabelColumn] = useState('')
+  const [newLabelOperator, setNewLabelOperator] = useState<'contains' | 'equals' | 'empty'>('contains')
+  const [newLabelNegate, setNewLabelNegate] = useState(false)
+  const [newLabelValue, setNewLabelValue] = useState('')
   const saveInputRef = useRef<HTMLInputElement>(null)
   const itemsPerPage = 20
 
@@ -119,7 +136,7 @@ function CompanyList({
       })
     }
 
-    result = applyPresets(result, activePresets)
+    result = applyPresets(result, activePresets, customPresets)
 
     if (sortCriteria.length > 0) {
       result.sort((a, b) => {
@@ -141,7 +158,7 @@ function CompanyList({
     }
 
     return result
-  }, [companies, filters, activePresets, sortCriteria])
+  }, [companies, filters, activePresets, customPresets, sortCriteria])
 
   const totalPages = Math.ceil(processed.length / itemsPerPage)
   const paginatedCompanies = processed.slice(
@@ -223,6 +240,8 @@ function CompanyList({
         chipClear: 'text-gray-600 hover:text-gray-300',
         saveBtn: 'text-gray-500 hover:text-gray-300 bg-white/5 hover:bg-white/10 border-white/10',
         saveInput: 'border-white/15 bg-white/5',
+        customTag: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300',
+        customTagActive: 'bg-emerald-500/25 text-emerald-300 border-emerald-400/50',
       }
     : {
         emptyText: 'text-gray-500',
@@ -250,6 +269,8 @@ function CompanyList({
         chipClear: 'text-gray-400 hover:text-gray-600',
         saveBtn: 'text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border-gray-200',
         saveInput: 'border-violet-300 bg-gray-50',
+        customTag: 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800',
+        customTagActive: 'bg-emerald-100 text-emerald-800 border-emerald-400',
       }
 
   if (companies.length === 0) {
@@ -392,14 +413,24 @@ function CompanyList({
             ))}
             {activePresets.map((id) => {
               const p = PRESET_FILTERS.find((x) => x.id === id)
-              return p ? (
+              const cp = customPresets.find((x) => x.id === id)
+              if (p) return (
                 <span key={id} className={`inline-flex items-center gap-1 text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.presetTagActive}`}>
                   {p.label}
                   <button onClick={() => onPresetsChange(activePresets.filter((x) => x !== id))} className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-black/10">
                     <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </span>
-              ) : null
+              )
+              if (cp) return (
+                <span key={id} className={`inline-flex items-center gap-1 text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.customTagActive}`}>
+                  {cp.label}
+                  <button onClick={() => onPresetsChange(activePresets.filter((x) => x !== id))} className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-black/10">
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </span>
+              )
+              return null
             })}
             {filters.map((f, i) => (
               <span key={`filter-${i}`} className={`inline-flex items-center gap-1 text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.presetTagActive}`}>
@@ -485,9 +516,11 @@ function CompanyList({
                 <div className="flex flex-wrap gap-1">
                   {presets.map((preset) => {
                     const isActive = activePresets.includes(preset.id)
+                    const isPreQuery = disabledPresetIds.includes(preset.id)
                     return (
                       <button
                         key={preset.id}
+                        disabled={isPreQuery}
                         onClick={() => {
                           if (isActive) {
                             onPresetsChange(activePresets.filter((id) => id !== preset.id))
@@ -497,7 +530,8 @@ function CompanyList({
                         }}
                         onMouseEnter={() => setHoveredPreset(preset.id)}
                         onMouseLeave={() => setHoveredPreset(null)}
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all ${isActive ? t.presetTagActive : t.presetTag}`}
+                        data-tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isActive ? t.presetTagActive : t.presetTag}`}
                       >
                         {preset.label}
                       </button>
@@ -518,6 +552,142 @@ function CompanyList({
               className={`text-[10px] font-medium mt-1.5 ${t.filterRemove}`}
             >
               Clear all tags
+            </button>
+          )}
+
+          {/* Custom labels section */}
+          {canExportPremium(userTier) && (
+            <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
+              <div className="flex items-center justify-between mb-0.5">
+                <div className={`text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-emerald-500/70' : 'text-emerald-600/70'}`}>Custom</div>
+                <button
+                  onClick={() => {
+                    setCustomLabelForm(!customLabelForm)
+                    if (!customLabelForm && columns.length > 0) setNewLabelColumn(columns[0])
+                  }}
+                  className={`text-[10px] font-medium ${isDark ? 'text-emerald-400/60 hover:text-emerald-400' : 'text-emerald-600/60 hover:text-emerald-600'}`}
+                >
+                  {customLabelForm ? 'Cancel' : '+ New'}
+                </button>
+              </div>
+              {customPresets.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-1">
+                  {customPresets.map((cp) => {
+                    const isActive = activePresets.includes(cp.id)
+                    const isPreQuery = disabledPresetIds.includes(cp.id)
+                    return (
+                      <div key={cp.id} className="group/custom inline-flex items-center gap-0.5">
+                        <button
+                          disabled={isPreQuery}
+                          onClick={() => {
+                            if (isActive) {
+                              onPresetsChange(activePresets.filter((id) => id !== cp.id))
+                            } else {
+                              onPresetsChange([...activePresets, cp.id])
+                            }
+                          }}
+                          data-tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isActive ? t.customTagActive : t.customTag}`}
+                        >
+                          {cp.label}
+                        </button>
+                        <button
+                          onClick={() => {
+                            onCustomPresetsChange(customPresets.filter((x) => x.id !== cp.id))
+                            onPresetsChange(activePresets.filter((id) => id !== cp.id))
+                          }}
+                          className={`opacity-0 group-hover/custom:opacity-100 transition-opacity w-3.5 h-3.5 rounded-full flex items-center justify-center ${t.filterRemove}`}
+                        >
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {customLabelForm && (
+                <div className={`rounded-lg border p-2 space-y-1.5 ${t.filterBg}`}>
+                  <input
+                    type="text"
+                    value={newLabelName}
+                    onChange={(e) => setNewLabelName(e.target.value)}
+                    placeholder="Label name…"
+                    className={`w-full rounded border px-1.5 py-1 outline-none ${t.input}`}
+                  />
+                  <div className="flex items-center gap-1 min-w-0">
+                    <ColSelect
+                      value={newLabelColumn}
+                      onChange={(v) => setNewLabelColumn(v)}
+                      columns={columns}
+                      className={`flex-1 min-w-0 rounded border h-[26px] ${t.select}`}
+                    />
+                    <button
+                      onClick={() => setNewLabelNegate(!newLabelNegate)}
+                      className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors ${
+                        newLabelNegate
+                          ? 'text-orange-400 border-orange-500/50 bg-orange-500/10'
+                          : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
+                      }`}
+                    >
+                      NOT
+                    </button>
+                    <select
+                      value={newLabelOperator}
+                      onChange={(e) => setNewLabelOperator(e.target.value as Filter['operator'])}
+                      className={`rounded border px-1 py-1 outline-none ${t.select}`}
+                    >
+                      <option value="contains">contains</option>
+                      <option value="equals">equals</option>
+                      <option value="empty">empty</option>
+                    </select>
+                  </div>
+                  {newLabelOperator !== 'empty' && (
+                    <input
+                      type="text"
+                      value={newLabelValue}
+                      onChange={(e) => setNewLabelValue(e.target.value)}
+                      placeholder="value…"
+                      className={`w-full rounded border px-1.5 py-1 outline-none ${t.input}`}
+                    />
+                  )}
+                  <button
+                    disabled={!newLabelName.trim() || !newLabelColumn}
+                    onClick={() => {
+                      const id = 'custom_' + Date.now().toString(36)
+                      onCustomPresetsChange([...customPresets, {
+                        id,
+                        label: newLabelName.trim(),
+                        column: newLabelColumn,
+                        operator: newLabelOperator,
+                        negate: newLabelNegate,
+                        value: newLabelValue,
+                      }])
+                      setNewLabelName('')
+                      setNewLabelValue('')
+                      setNewLabelNegate(false)
+                      setCustomLabelForm(false)
+                    }}
+                    className={`text-[10px] font-semibold py-1 px-3 rounded-lg transition-all disabled:opacity-40 ${
+                      isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Create label
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {!canExportPremium(userTier) && (
+            <button
+              onClick={() => onPaywall('custom labels')}
+              className={`flex items-center gap-1.5 text-[10px] font-medium mt-2 pt-2 border-t border-dashed transition-colors ${
+                isDark ? 'text-gray-600 hover:text-gray-400 border-white/5' : 'text-gray-400 hover:text-gray-600 border-gray-200'
+              }`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Custom labels — upgrade to unlock
             </button>
           )}
         </div>

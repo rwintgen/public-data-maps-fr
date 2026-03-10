@@ -20,17 +20,14 @@ export async function GET(req: NextRequest) {
     const month = getMonthKey()
 
     const adminDb = getAdminDb()
-    const [usageSnap, profileSnap, aiOverviewsSnap] = await Promise.all([
-      adminDb.collection('userUsage').doc(uid).get(),
+    const [profileSnap, aiOverviewsSnap] = await Promise.all([
       adminDb.collection('userProfiles').doc(uid).get(),
       adminDb.collection('userProfiles').doc(uid).collection('aiOverviews').orderBy('createdAt', 'desc').limit(50).get(),
     ])
 
-    const usageData = usageSnap.exists ? usageSnap.data()! : {}
-    const searchCount = usageData.monthKey === month ? (usageData.searchCount ?? 0) : 0
-    const aiOverviewCount = usageData.monthKey === month ? (usageData.aiOverviewCount ?? 0) : 0
-
     const profileData = profileSnap.exists ? profileSnap.data()! : {}
+    const searchCount = profileData.monthKey === month ? (profileData.searchCount ?? 0) : 0
+    const aiOverviewCount = profileData.monthKey === month ? (profileData.aiOverviewCount ?? 0) : 0
     const stripeTier = profileData.tier ?? 'free'
     const subscriptionStatus = profileData.subscriptionStatus ?? null
 

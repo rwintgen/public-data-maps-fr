@@ -62,7 +62,7 @@ src/
     CompanyList.tsx   ← Sortable/filterable paginated list
     CompanyDetail.tsx ← Field detail modal
     ColumnConfig.tsx  ← Reusable column picker (list / popup tabs)
-    SavedAreas.tsx    ← Firestore-backed saved searches
+    SavedSearches.tsx ← Firestore-backed saved searches
     SearchBar.tsx     ← Nominatim geocoding
     AuthModal.tsx     ← Firebase Auth (Google + email/password)
     ExportModal.tsx   ← CSV/JSON export

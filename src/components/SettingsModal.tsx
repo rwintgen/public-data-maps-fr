@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { Modal, CloseButton } from './ui'
-import SavedAreas from './SavedAreas'
+import SavedSearches from './SavedSearches'
 import UsageTracker from './UsageTracker'
-import type { UserTier } from '@/lib/usage'
+import { TIER_LIMITS, getResultLimit, MAX_ENTERPRISE_RESULT_LIMIT, type UserTier } from '@/lib/usage'
 
 interface AIOverviewEntry {
   siret: string
@@ -49,6 +49,8 @@ interface SettingsModalProps {
   onSavedSearchCountChange: (count: number) => void
   activeSearchId: string | null
   onViewAIOverview: (siret: string) => void
+  customResultLimit: number | null
+  onCustomResultLimitChange: (limit: number | null) => void
 }
 
 export default function SettingsModal({
@@ -80,6 +82,8 @@ export default function SettingsModal({
   onSavedSearchCountChange,
   activeSearchId,
   onViewAIOverview,
+  customResultLimit,
+  onCustomResultLimitChange,
 }: SettingsModalProps) {
   const [settingsOpen, setSettingsOpen] = useState(() => {
     try { return localStorage.getItem('pdm_section_settings') !== '0' } catch { return true }
@@ -300,6 +304,61 @@ export default function SettingsModal({
                   </button>
                 </div>
               )}
+
+              {(userTier === 'individual' || userTier === 'enterprise') && (() => {
+                const maxForTier = userTier === 'enterprise' ? MAX_ENTERPRISE_RESULT_LIMIT : TIER_LIMITS[userTier].resultsPerQuery
+                const currentValue = customResultLimit ?? getResultLimit(userTier)
+                const handleChange = (v: number) => {
+                  if (isNaN(v) || v < 1) { onCustomResultLimitChange(null); return }
+                  onCustomResultLimitChange(Math.min(v, maxForTier))
+                }
+                return (
+                  <div>
+                    <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Result Limit</div>
+                    <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
+                      <input
+                        type="range"
+                        min={1}
+                        max={maxForTier}
+                        step={1}
+                        value={currentValue}
+                        onChange={(e) => handleChange(parseInt(e.target.value, 10))}
+                        className="pdm-range"
+                        style={{ background: `linear-gradient(to right, #7c3aed ${maxForTier > 1 ? ((currentValue - 1) / (maxForTier - 1)) * 100 : 100}%, ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} ${maxForTier > 1 ? ((currentValue - 1) / (maxForTier - 1)) * 100 : 100}%)` }}
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxForTier}
+                          value={currentValue}
+                          onChange={(e) => handleChange(parseInt(e.target.value, 10))}
+                          className={`flex-1 min-w-0 rounded-md border px-2 py-1 text-[11px] outline-none transition-colors ${
+                            isDark
+                              ? 'bg-white/5 border-white/10 text-white focus:border-white/30'
+                              : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'
+                          }`}
+                        />
+                        <button
+                          disabled={currentValue === maxForTier}
+                          onClick={() => onCustomResultLimitChange(maxForTier)}
+                          className={`flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isDark ? 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                          }`}
+                        >
+                          Max
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[10px] ${t.label}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
+                        {currentValue > 50_000 && (
+                          <span className="text-[10px] font-medium text-amber-500">⚠ May be slow</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
                   </div>
                 )}
               </div>
@@ -363,11 +422,11 @@ export default function SettingsModal({
               </div>
             )}
 
-            {/* Saved Areas */}
+            {/* Saved Searches */}
             {user && (
               <div className={`border-t ${t.sectionBorder}`}>
                 <div className="px-4 py-3">
-                  <SavedAreas
+                  <SavedSearches
                     onRestoreSearch={(...args) => { onRestoreSearch(...args); handleClose() }}
                     onDeleteCurrentSearch={onDeleteCurrentSearch}
                     onCountChange={onSavedSearchCountChange}

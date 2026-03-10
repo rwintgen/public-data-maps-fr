@@ -32,7 +32,8 @@
     "react-firebase-hooks": "^5.1.1",
     "react-leaflet": "^4.2.1",
     "react-leaflet-draw": "^0.20.4",
-    "stripe": "^20.4.0"
+    "stripe": "^20.4.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.8",

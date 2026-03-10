@@ -22,7 +22,7 @@ interface UsageRow {
 
 /**
  * Collapsible panel displaying current usage of tier-limited features.
- * Styled to match the SavedAreas section in the settings dropdown.
+ * Styled to match the SavedSearches section in the settings dropdown.
  */
 export default function UsageTracker({ isDark, userTier, searchCount, aiOverviewCount, savedSearchCount, isLoggedIn, isOpen, onToggle }: UsageTrackerProps) {
   const limits = TIER_LIMITS[userTier]

@@ -30,7 +30,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
   payg: {
     resultsPerQuery: 10_000,
     searchesPerMonth: Infinity,
-    savedSearches: 20,
+    savedSearches: 100,
     aiOverviewsPerMonth: Infinity,
   },
   individual: {
@@ -154,3 +154,11 @@ export function canUseAIOverview(userKey: string, tier: UserTier): boolean {
 export function canUseAI(tier: UserTier): boolean {
   return TIER_LIMITS[tier].aiOverviewsPerMonth > 0
 }
+
+/** Premium export formats (Excel, XML, GeoJSON) require at least PAYG tier. */
+export function canExportPremium(tier: UserTier): boolean {
+  return tier !== 'free'
+}
+
+/** Returns the maximum custom result limit an enterprise user can set. */
+export const MAX_ENTERPRISE_RESULT_LIMIT = 5_000_000

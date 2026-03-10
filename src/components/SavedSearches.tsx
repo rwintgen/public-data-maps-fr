@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { collection, onSnapshot, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 
 interface Filter {
@@ -17,7 +17,7 @@ interface Filter {
  * Supports save (inline name input), rename, delete, and restore —
  * restoring re-applies the geometry, filters, and sort to the main view.
  */
-export default function SavedAreas({
+export default function SavedSearches({
   onRestoreSearch,
   onDeleteCurrentSearch,
   onCountChange,
@@ -34,7 +34,7 @@ export default function SavedAreas({
   isOpen?: boolean
   onToggle?: () => void
 }) {
-  const [savedAreas, setSavedAreas] = useState<any[]>([])
+  const [savedSearches, setSavedSearches] = useState<any[]>([])
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen ?? internalOpen
   const toggleOpen = onToggle ?? (() => setInternalOpen((v) => !v))
@@ -46,13 +46,13 @@ export default function SavedAreas({
 
   useEffect(() => {
     if (user) {
-      const q = query(collection(db, 'savedAreas'), where('userId', '==', user.uid))
+      const q = collection(db, 'userProfiles', user.uid, 'savedSearches')
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const areas: any[] = []
         querySnapshot.forEach((doc) => {
           areas.push({ id: doc.id, ...doc.data() })
         })
-        setSavedAreas(areas)
+        setSavedSearches(areas)
         onCountChange?.(areas.length)
       })
       return () => unsubscribe()
@@ -63,13 +63,13 @@ export default function SavedAreas({
     if (area.id === activeSearchId) {
       onDeleteCurrentSearch()
     }
-    await deleteDoc(doc(db, 'savedAreas', area.id))
+    await deleteDoc(doc(db, 'userProfiles', user!.uid, 'savedSearches', area.id))
     setPendingDeleteId(null)
   }
 
   const handleRename = async (areaId: string) => {
     if (renameValue.trim()) {
-      await updateDoc(doc(db, 'savedAreas', areaId), { name: renameValue.trim() })
+      await updateDoc(doc(db, 'userProfiles', user!.uid, 'savedSearches', areaId), { name: renameValue.trim() })
     }
     setRenamingId(null)
     setRenameValue('')
@@ -124,10 +124,10 @@ export default function SavedAreas({
 
       {isOpen && (
         <div className="mt-2 space-y-1 max-h-[35vh] overflow-y-auto overflow-x-hidden">
-          {savedAreas.length === 0 && (
+          {savedSearches.length === 0 && (
             <p className={`text-xs py-2 ${t.emptyText}`}>No saved searches yet.</p>
           )}
-          {savedAreas.map((area) => (
+          {savedSearches.map((area) => (
             <div
               key={area.id}
               className={`group flex items-center gap-1 rounded-md transition-colors ${t.item}`}

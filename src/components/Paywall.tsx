@@ -101,6 +101,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
     popular: boolean
     isFree: boolean
     disabled?: boolean
+    isEnterprise?: boolean
     features: PlanFeature[]
   }
 
@@ -122,7 +123,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
         { text: '5 saved searches', included: true },
         { text: 'CSV & JSON export', included: true },
         { text: 'Custom labels', included: false },
-        { text: 'AI company overviews', included: false },
+        { text: 'AI overviews', included: false },
       ],
     },
     {
@@ -141,7 +142,8 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
         { text: 'Everything in Free plan', included: true },
         { text: 'Unlimited searches (pay-per-use)', included: true },
         { text: '10,000 results per query', included: true },
-        { text: '20 saved searches', included: true },
+        { text: '100 saved searches', included: true },
+        { text: 'All export formats', included: true },
         { text: 'Custom labels', included: true },
         { text: 'AI overviews (pay-per-use)', included: true },
       ],
@@ -162,7 +164,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
         { text: '100 searches / month', included: true },
         { text: '50,000 results per query', included: true },
         { text: 'Unlimited saved searches', included: true },
-        { text: 'All export formats', included: true },
+        // { text: 'All export formats', included: true },
         { text: '250 AI overviews / month', included: true },
       ],
     },
@@ -174,9 +176,10 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
       priceLine: null,
       priceUnit: '/seat/mo',
       priceNote: null,
-      cta: 'Start free trial',
+      cta: 'Contact us',
       popular: false,
       isFree: false,
+      isEnterprise: true,
       features: [
         { text: 'Everything in Individual plan', included: true },
         { text: 'Unlimited searches', included: true },
@@ -298,7 +301,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                     )}
                     {plan.priceUnit?.includes('seat') && (
                       <p className={`text-[10px] mt-0.5 ${t.seatNote}`}>
-                        Final pricing may vary based on requested features
+                        Starting price — contact us for a quote
                       </p>
                     )}
                   </>
@@ -311,7 +314,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                         <div className="space-y-1">
                           <div className="flex justify-between text-[10px]">
                             <span>Per result</span>
-                            <span className="font-medium">$0.0001</span>
+                            <span className="font-medium">$0.000007</span>
                           </div>
                           <div className="flex justify-between text-[10px]">
                             <span>AI overview</span>
@@ -339,29 +342,47 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                 ))}
               </ul>
 
-              <button
-                disabled={(plan.isFree && !discountInfo) || plan.disabled || plan.id === currentTier}
-                onClick={() => {
-                  if (plan.isFree && discountInfo && onRevertDiscount) {
-                    onRevertDiscount().then(() => handleClose())
-                    return
-                  }
-                  if (onCheckout && !plan.isFree && !plan.disabled && plan.id !== currentTier) {
-                    onCheckout(plan.id, billing)
-                  }
-                }}
-                className={`w-full rounded-lg py-2 text-xs font-semibold transition-all border ${
-                  plan.id === currentTier || (plan.isFree && !discountInfo) || plan.disabled
-                    ? t.freeBtn + ' cursor-default'
-                    : plan.popular ? t.primaryBtn : t.secondaryBtn
-                }`}
-              >
-                {plan.id === currentTier
-                  ? 'Current plan'
-                  : plan.isFree && discountInfo
-                    ? 'Revert to free plan'
-                    : plan.cta}
-              </button>
+              {plan.isEnterprise ? (
+                plan.id === currentTier ? (
+                  <button disabled className={`w-full rounded-lg py-2 text-xs font-semibold border cursor-default ${t.freeBtn}`}>
+                    Current plan
+                  </button>
+                ) : (
+                  <a
+                    href="mailto:romainwintgens@gmail.com?subject=Enterprise%20plan"
+                    className={`w-full rounded-lg py-2 text-xs font-semibold transition-all border flex items-center justify-center gap-1.5 ${t.secondaryBtn}`}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Contact us
+                  </a>
+                )
+              ) : (
+                <button
+                  disabled={(plan.isFree && !discountInfo) || plan.disabled || plan.id === currentTier}
+                  onClick={() => {
+                    if (plan.isFree && discountInfo && onRevertDiscount) {
+                      onRevertDiscount().then(() => handleClose())
+                      return
+                    }
+                    if (onCheckout && !plan.isFree && !plan.disabled && plan.id !== currentTier) {
+                      onCheckout(plan.id, billing)
+                    }
+                  }}
+                  className={`w-full rounded-lg py-2 text-xs font-semibold transition-all border ${
+                    plan.id === currentTier || (plan.isFree && !discountInfo) || plan.disabled
+                      ? t.freeBtn + ' cursor-default'
+                      : plan.popular ? t.primaryBtn : t.secondaryBtn
+                  }`}
+                >
+                  {plan.id === currentTier
+                    ? 'Current plan'
+                    : plan.isFree && discountInfo
+                      ? 'Revert to free plan'
+                      : plan.cta}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -380,6 +401,18 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                 type="text"
                 value={discountCode}
                 onChange={(e) => { setDiscountCode(e.target.value); setDiscountError(''); setDiscountSuccess(false) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && onRedeemCode && discountCode.trim() && !discountLoading) {
+                    e.preventDefault()
+                    setDiscountLoading(true)
+                    setDiscountError('')
+                    setDiscountSuccess(false)
+                    onRedeemCode(discountCode.trim()).then((res) => {
+                      setDiscountLoading(false)
+                      if (res.error) { setDiscountError(res.error) } else { setDiscountSuccess(true); setTimeout(() => handleClose(), 1500) }
+                    })
+                  }
+                }}
                 placeholder="Enter code"
                 className={`flex-1 rounded-lg border px-3 py-1.5 text-xs outline-none transition-colors ${
                   isDark

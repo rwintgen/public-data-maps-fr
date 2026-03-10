@@ -2,21 +2,35 @@
 
 import { useState } from 'react'
 import { Modal, CloseButton, Checkbox } from '@/components/ui'
+import { canExportPremium, type UserTier } from '@/lib/usage'
+
+type ExportFormat = 'csv' | 'json' | 'excel' | 'xml' | 'geojson'
+
+const FORMAT_META: { id: ExportFormat; label: string; premium: boolean }[] = [
+  { id: 'csv', label: 'CSV', premium: false },
+  { id: 'json', label: 'JSON', premium: false },
+  { id: 'excel', label: 'Excel', premium: true },
+  { id: 'xml', label: 'XML', premium: true },
+  { id: 'geojson', label: 'GeoJSON', premium: true },
+]
 
 interface Props {
   companies: any[]
   displayColumns: string[]
   isDark: boolean
+  userTier: UserTier
   onClose: () => void
+  onPaywall: (feature: string) => void
 }
 
 /**
- * Modal for exporting the current search results as CSV or JSON.
- * Lets the user select which columns to include; coordinates are always exported.
+ * Modal for exporting search results in multiple formats.
+ * Free users get CSV/JSON; premium formats (Excel, XML, GeoJSON) require PAYG+.
  */
-export default function ExportModal({ companies, displayColumns, isDark, onClose }: Props) {
+export default function ExportModal({ companies, displayColumns, isDark, userTier, onClose, onPaywall }: Props) {
   const [selectedCols, setSelectedCols] = useState<string[]>([...displayColumns])
-  const [format, setFormat] = useState<'csv' | 'json'>('csv')
+  const [format, setFormat] = useState<ExportFormat>('csv')
+  const isPremium = canExportPremium(userTier)
 
   const toggleCol = (col: string) => {
     setSelectedCols((prev) =>
@@ -24,11 +38,8 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
     )
   }
 
-  /** Builds a CSV or JSON blob from the selected columns and triggers a download. */
-  const handleExport = () => {
-    if (selectedCols.length === 0) return
-
-    const rows = companies.map((c) => {
+  const buildRows = () =>
+    companies.map((c) => {
       const obj: Record<string, string> = {}
       for (const col of selectedCols) {
         obj[col] = (c.fields?.[col] ?? '').toString()
@@ -38,12 +49,49 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
       return obj
     })
 
+  /** Builds a blob in the chosen format and triggers a download. */
+  const handleExport = async () => {
+    if (selectedCols.length === 0) return
+
+    const rows = buildRows()
     let blob: Blob
     let filename: string
 
     if (format === 'json') {
       blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' })
       filename = `export-${Date.now()}.json`
+    } else if (format === 'excel') {
+      const XLSX = (await import('xlsx'))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Export')
+      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+      blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      filename = `export-${Date.now()}.xlsx`
+    } else if (format === 'xml') {
+      const allKeys = Object.keys(rows[0] ?? {})
+      const escXml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      const xmlRows = rows.map((r) =>
+        '  <row>\n' + allKeys.map((k) => `    <${k.replace(/[^a-zA-Z0-9_]/g, '_')}>${escXml(r[k] ?? '')}</${k.replace(/[^a-zA-Z0-9_]/g, '_')}>`).join('\n') + '\n  </row>'
+      )
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<data>\n${xmlRows.join('\n')}\n</data>`
+      blob = new Blob([xml], { type: 'application/xml;charset=utf-8;' })
+      filename = `export-${Date.now()}.xml`
+    } else if (format === 'geojson') {
+      const features = companies.map((c) => {
+        const props: Record<string, string> = {}
+        for (const col of selectedCols) {
+          props[col] = (c.fields?.[col] ?? '').toString()
+        }
+        return {
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: [c.lon ?? 0, c.lat ?? 0] },
+          properties: props,
+        }
+      })
+      const geojson = { type: 'FeatureCollection' as const, features }
+      blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json' })
+      filename = `export-${Date.now()}.geojson`
     } else {
       const allKeys = selectedCols.concat(rows[0]?.Latitude != null ? ['Latitude', 'Longitude'] : [])
       const csvLines = [
@@ -111,16 +159,31 @@ export default function ExportModal({ companies, displayColumns, isDark, onClose
         {/* Format selection */}
         <div className={`px-5 pb-3 border-b ${t.divider}`}>
           <div className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>Format</div>
-          <div className="flex gap-2">
-            {(['csv', 'json'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFormat(f)}
-                className={`flex-1 text-sm font-medium py-2 rounded-lg border transition-all ${format === f ? t.formatActive : t.formatBtn}`}
-              >
-                {f.toUpperCase()}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {FORMAT_META.map((f) => {
+              const locked = f.premium && !isPremium
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    if (locked) { onPaywall('premium export formats'); return }
+                    setFormat(f.id)
+                  }}
+                  className={`flex items-center gap-1.5 text-sm font-medium py-2 px-3 rounded-lg border transition-all ${
+                    locked
+                      ? isDark ? 'text-gray-600 border-white/5 opacity-60' : 'text-gray-400 border-gray-200 opacity-60'
+                      : format === f.id ? t.formatActive : t.formatBtn
+                  }`}
+                >
+                  {f.label}
+                  {locked && (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
 

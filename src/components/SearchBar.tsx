@@ -143,6 +143,7 @@ export default function SearchBar({ onSelect, isDark }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
+          autoFocus
           onFocus={() => suggestions.length > 0 && setIsOpen(true)}
           placeholder="Search a place…"
           className={`flex-1 text-sm outline-none min-w-0 ${t.input}`}

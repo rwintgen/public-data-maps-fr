@@ -224,12 +224,12 @@ export async function POST(req: NextRequest) {
                 createdAt: now,
               })
               const month = getMonthKey()
-              const usageRef = adminDb.collection('userUsage').doc(uid)
+              const profileRef = adminDb.collection('userProfiles').doc(uid)
               await adminDb.runTransaction(async (tx) => {
-                const snap = await tx.get(usageRef)
+                const snap = await tx.get(profileRef)
                 const data = snap.exists ? snap.data()! : {}
                 const count = data.monthKey === month ? (data.aiOverviewCount ?? 0) : 0
-                tx.set(usageRef, { aiOverviewCount: count + 1, monthKey: month }, { merge: true })
+                tx.set(profileRef, { aiOverviewCount: count + 1, monthKey: month }, { merge: true })
               })
             }
           } catch { /* non-critical — overview still delivered to user */ }

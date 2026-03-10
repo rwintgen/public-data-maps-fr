@@ -290,6 +290,30 @@ export const PRESET_FILTERS: PresetFilter[] = [
 /** Group labels in display order. */
 export const PRESET_GROUPS = ['Status', 'Legal form', 'Size', 'Values', 'Sector'] as const
 
+export interface CustomPreset {
+  id: string
+  label: string
+  column: string
+  operator: 'contains' | 'equals' | 'empty'
+  negate: boolean
+  value: string
+}
+
+/** Builds a test function from a user-defined custom preset. */
+function customPresetTest(p: CustomPreset): (fields: Record<string, string>) => boolean {
+  return (fields) => {
+    const val = (fields[p.column] ?? '').toString().toLowerCase()
+    let match: boolean
+    switch (p.operator) {
+      case 'contains': match = val.includes(p.value.toLowerCase()); break
+      case 'equals': match = val === p.value.toLowerCase(); break
+      case 'empty': match = val.length === 0; break
+      default: match = true
+    }
+    return p.negate ? !match : match
+  }
+}
+
 /**
  * Applies active presets to a company array.
  * All active presets are ANDed — a company must pass every active test.
@@ -297,12 +321,18 @@ export const PRESET_GROUPS = ['Status', 'Legal form', 'Size', 'Values', 'Sector'
 export function applyPresets(
   companies: any[],
   activePresetIds: string[],
+  customPresets?: CustomPreset[],
 ): any[] {
   if (activePresetIds.length === 0) return companies
-  const activeTests = PRESET_FILTERS
-    .filter((p) => activePresetIds.includes(p.id))
-    .map((p) => p.test)
+  const tests: ((fields: Record<string, string>) => boolean)[] = []
+  for (const id of activePresetIds) {
+    const builtin = PRESET_FILTERS.find((p) => p.id === id)
+    if (builtin) { tests.push(builtin.test); continue }
+    const custom = customPresets?.find((p) => p.id === id)
+    if (custom) tests.push(customPresetTest(custom))
+  }
+  if (tests.length === 0) return companies
   return companies.filter((c) =>
-    activeTests.every((test) => test(c.fields ?? {})),
+    tests.every((test) => test(c.fields ?? {})),
   )
 }
