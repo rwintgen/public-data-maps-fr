@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Modal, CloseButton } from './ui'
+import { Modal, CloseButton, PresetPill, SectionTitle } from './ui'
 import SavedSearches from './SavedSearches'
 import UsageTracker from './UsageTracker'
-import { TIER_LIMITS, getResultLimit, MAX_ENTERPRISE_RESULT_LIMIT, type UserTier } from '@/lib/usage'
+import { PRESET_FILTERS, PRESET_GROUPS } from '@/lib/presets'
+import { TIER_LIMITS, getResultLimit, MAX_ENTERPRISE_RESULT_LIMIT, canUsePresets, type UserTier } from '@/lib/usage'
 
 interface AIOverviewEntry {
   siret: string
@@ -51,6 +52,8 @@ interface SettingsModalProps {
   onViewAIOverview: (siret: string) => void
   customResultLimit: number | null
   onCustomResultLimitChange: (limit: number | null) => void
+  defaultPresets: string[]
+  onDefaultPresetsChange: (presets: string[]) => void
 }
 
 export default function SettingsModal({
@@ -84,6 +87,8 @@ export default function SettingsModal({
   onViewAIOverview,
   customResultLimit,
   onCustomResultLimitChange,
+  defaultPresets,
+  onDefaultPresetsChange,
 }: SettingsModalProps) {
   const [settingsOpen, setSettingsOpen] = useState(() => {
     try { return localStorage.getItem('pdm_section_settings') !== '0' } catch { return true }
@@ -272,6 +277,21 @@ export default function SettingsModal({
                 </div>
               </div>
 
+              {user && (
+                <div>
+                  <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Plan</div>
+                  <button
+                    onClick={() => {
+                      if (userTier !== 'free') { onManagePlan(); handleClose() }
+                      else { onPaywall('plan'); handleClose() }
+                    }}
+                    className={`w-full text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn} ${t.btnHover}`}
+                  >
+                    {userTier === 'free' ? 'Upgrade plan' : 'Manage plan'}
+                  </button>
+                </div>
+              )}
+
               <div>
                 <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Visible Fields</div>
                 <div className="flex gap-2">
@@ -290,18 +310,48 @@ export default function SettingsModal({
                 </div>
               </div>
 
-              {user && (
+              {canUsePresets(userTier) && (
                 <div>
-                  <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Plan</div>
-                  <button
-                    onClick={() => {
-                      if (userTier !== 'free') { onManagePlan(); handleClose() }
-                      else { onPaywall('plan'); handleClose() }
-                    }}
-                    className={`w-full text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn} ${t.btnHover}`}
-                  >
-                    {userTier === 'free' ? 'Upgrade plan' : 'Manage plan'}
-                  </button>
+                  <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Default Quick Filters</div>
+                  <div className={`rounded-lg border p-3 space-y-1.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
+                    {PRESET_GROUPS.map((group) => {
+                      const presets = PRESET_FILTERS.filter((p) => p.group === group)
+                      return (
+                        <div key={group} className="mb-1 last:mb-0">
+                          <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
+                          <div className="flex flex-wrap gap-1">
+                            {presets.map((preset) => {
+                              const active = defaultPresets.includes(preset.id)
+                              return (
+                                <PresetPill
+                                  key={preset.id}
+                                  label={preset.label}
+                                  active={active}
+                                  isDark={isDark}
+                                  onClick={() => onDefaultPresetsChange(
+                                    active
+                                      ? defaultPresets.filter((id) => id !== preset.id)
+                                      : [...defaultPresets, preset.id]
+                                  )}
+                                />
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {defaultPresets.length > 0 && (
+                      <button
+                        onClick={() => onDefaultPresetsChange([])}
+                        className={`text-[10px] font-medium mt-1 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    <p className={`text-[10px] ${t.label}`}>
+                      These presets will be automatically selected as pre-search filters on every new search.
+                    </p>
+                  </div>
                 </div>
               )}
 

@@ -52,7 +52,7 @@ export default function Home() {
   const [systemDark, setSystemDark] = useState(true)
   const [mapStyle, setMapStyle] = useState<'default' | 'themed' | 'satellite'>('themed')
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
-  const [user] = useAuthState(auth)
+  const [user, authLoading] = useAuthState(auth)
   const [authOpen, setAuthOpen] = useState(false)
   const [expandedCompany, setExpandedCompany] = useState<any>(null)
   const [exportOpen, setExportOpen] = useState(false)
@@ -78,6 +78,7 @@ export default function Home() {
   const [aiOverviewsList, setAIOverviewsList] = useState<{ siret: string; companyName: string; city: string; createdAt: string }[]>([])
   const [userTier, setUserTier] = useState<UserTier>('free')
   const [discountInfo, setDiscountInfo] = useState<{ code: string; plan: string; expiresAt: string } | null>(null)
+  const [bootSteps, setBootSteps] = useState({ auth: false, columns: false, preferences: false, account: false })
 
   const prefsKey = (uid: string) => `prefs_${uid}`
 
@@ -93,6 +94,7 @@ export default function Home() {
   const [activePresets, setActivePresets] = useState<string[]>([])
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>([])
   const [customResultLimit, setCustomResultLimit] = useState<number | null>(null)
+  const [defaultPresets, setDefaultPresets] = useState<string[]>([])
   const [preQueryPresets, setPreQueryPresets] = useState<string[]>([])
   const [preQueryFilters, setPreQueryFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[]>([])
   const [preQueryCustomIds, setPreQueryCustomIds] = useState<string[]>([])
@@ -119,12 +121,19 @@ export default function Home() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
+  useEffect(() => {
+    if (!authLoading) setBootSteps((s) => ({ ...s, auth: true }))
+  }, [authLoading])
+
   /** Initialise search count from localStorage on mount, then sync from Firestore for logged-in users. */
   useEffect(() => {
     const uKey = getUserKey(user?.uid ?? null)
     setSearchCount(getSearchCount(uKey))
     setAIOverviewCount(getAIOverviewCount(uKey))
-    if (!user) return
+    if (!user) {
+      setBootSteps((s) => ({ ...s, account: true }))
+      return
+    }
     user.getIdToken().then((token) =>
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => r.ok ? r.json() : null)
@@ -144,7 +153,8 @@ export default function Home() {
           setDiscountInfo(data?.discount ?? null)
         })
         .catch(() => {})
-    ).catch(() => {})
+        .finally(() => setBootSteps((s) => ({ ...s, account: true })))
+    ).catch(() => setBootSteps((s) => ({ ...s, account: true })))
   }, [user])
 
   /**
@@ -153,7 +163,11 @@ export default function Home() {
    * then Firestore is fetched for cross-device sync.
    */
   useEffect(() => {
-    if (!user) { profileLoaded.current = false; return }
+    if (!user) {
+      profileLoaded.current = false
+      setBootSteps((s) => ({ ...s, preferences: true }))
+      return
+    }
     const key = prefsKey(user.uid)
     try {
       const cached = localStorage.getItem(key)
@@ -166,6 +180,7 @@ export default function Home() {
         else if (typeof p.isDark === 'boolean') setThemeMode(p.isDark ? 'dark' : 'light')
         if (Array.isArray(p.customPresets)) setCustomPresets(p.customPresets)
         if (typeof p.customResultLimit === 'number') setCustomResultLimit(p.customResultLimit)
+        if (Array.isArray(p.defaultPresets)) { setDefaultPresets(p.defaultPresets); setPreQueryPresets(p.defaultPresets) }
       }
     } catch (_) {}
     getDoc(doc(db, 'userProfiles', user.uid))
@@ -179,13 +194,16 @@ export default function Home() {
           else if (typeof p.isDark === 'boolean') setThemeMode(p.isDark ? 'dark' : 'light')
           if (Array.isArray(p.customPresets)) setCustomPresets(p.customPresets)
           if (typeof p.customResultLimit === 'number') setCustomResultLimit(p.customResultLimit)
+          if (Array.isArray(p.defaultPresets)) { setDefaultPresets(p.defaultPresets); setPreQueryPresets(p.defaultPresets) }
           try { localStorage.setItem(key, JSON.stringify(p)) } catch (_) {}
         }
         profileLoaded.current = true
+        setBootSteps((s) => ({ ...s, preferences: true }))
       })
       .catch((e) => {
         console.warn('Firestore prefs load failed, using local cache:', e)
         profileLoaded.current = true
+        setBootSteps((s) => ({ ...s, preferences: true }))
       })
   }, [user])
 
@@ -195,7 +213,7 @@ export default function Home() {
    */
   useEffect(() => {
     if (!user || !profileLoaded.current) return
-    const prefs = { listColumns, popupColumns, mapStyle, themeMode, customPresets, customResultLimit }
+    const prefs = { listColumns, popupColumns, mapStyle, themeMode, customPresets, customResultLimit, defaultPresets }
     try { localStorage.setItem(prefsKey(user.uid), JSON.stringify(prefs)) } catch (_) {}
     const timer = setTimeout(() => {
       setDoc(doc(db, 'userProfiles', user.uid), prefs, { merge: true })
@@ -203,7 +221,7 @@ export default function Home() {
         .catch((e) => console.warn('Firestore prefs save failed:', e))
     }, 1000)
     return () => clearTimeout(timer)
-  }, [user, listColumns, popupColumns, mapStyle, themeMode, customPresets, customResultLimit])
+  }, [user, listColumns, popupColumns, mapStyle, themeMode, customPresets, customResultLimit, defaultPresets])
 
   useEffect(() => {
     fetch('/api/search')
@@ -218,6 +236,7 @@ export default function Home() {
         }
       })
       .catch(console.error)
+      .finally(() => setBootSteps((s) => ({ ...s, columns: true })))
   }, [])
 
   useEffect(() => {
@@ -695,6 +714,37 @@ export default function Home() {
         footerText: 'text-gray-400',
         loadingBg: 'bg-white/90 text-gray-900 border-gray-200',
       }
+
+  const bootReady = bootSteps.auth && bootSteps.columns && bootSteps.preferences && bootSteps.account
+  const bootProgress = [bootSteps.auth, bootSteps.columns, bootSteps.preferences, bootSteps.account].filter(Boolean).length
+  const bootLabel = !bootSteps.auth
+    ? 'Authenticating…'
+    : !bootSteps.columns
+      ? 'Fetching dataset schema…'
+      : !bootSteps.preferences
+        ? 'Loading preferences…'
+        : !bootSteps.account
+          ? 'Retrieving account & plan…'
+          : 'Ready'
+
+  if (!bootReady) {
+    return (
+      <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-gray-950' : 'bg-white'}`}>
+        <div className="flex flex-col items-center gap-4 w-64">
+          <img src="/logo-full.png" alt="Public Data Maps" className={`h-14 w-auto ${isDark ? 'invert' : ''}`} />
+          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }}>
+            <div
+              className="h-full rounded-full transition-[width] duration-500 ease-out"
+              style={{ width: `${(bootProgress / 4) * 100}%`, background: '#7c3aed' }}
+            />
+          </div>
+          <span className={`text-[11px] font-medium tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            {bootLabel}
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -1316,6 +1366,8 @@ export default function Home() {
         onViewAIOverview={handleViewAIBySiret}
         customResultLimit={customResultLimit}
         onCustomResultLimitChange={setCustomResultLimit}
+        defaultPresets={defaultPresets}
+        onDefaultPresetsChange={setDefaultPresets}
       />
     )}
 
