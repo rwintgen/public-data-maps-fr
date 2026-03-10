@@ -54,6 +54,9 @@ interface SettingsModalProps {
   onCustomResultLimitChange: (limit: number | null) => void
   defaultPresets: string[]
   onDefaultPresetsChange: (presets: string[]) => void
+  orgId: string | null
+  orgRole: 'owner' | 'admin' | 'member' | null
+  orgName: string | null
 }
 
 export default function SettingsModal({
@@ -89,6 +92,9 @@ export default function SettingsModal({
   onCustomResultLimitChange,
   defaultPresets,
   onDefaultPresetsChange,
+  orgId,
+  orgRole,
+  orgName,
 }: SettingsModalProps) {
   const [settingsOpen, setSettingsOpen] = useState(() => {
     try { return localStorage.getItem('pdm_section_settings') !== '0' } catch { return true }
@@ -198,6 +204,21 @@ export default function SettingsModal({
 
           {/* Expand/Collapse all */}
           <div className={`px-4 py-1.5 border-b ${t.sectionBorder}`}>
+            {orgId && orgName ? (
+              <div className={`flex items-center gap-2 mb-1.5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                <svg className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+                <span className="text-[11px] font-medium truncate">{orgName}</span>
+                {(orgRole === 'owner' || orgRole === 'admin') && (
+                  <a href="/org" onClick={handleClose} className={`text-[10px] font-medium ml-auto flex-shrink-0 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors`}>Manage</a>
+                )}
+              </div>
+            ) : userTier === 'enterprise' && !orgId ? (
+              <a href="/org" onClick={handleClose} className="flex items-center gap-1.5 mb-1.5 text-[11px] font-medium text-violet-500 hover:text-violet-400 transition-colors">
+                <span>+ Set up your organization</span>
+              </a>
+            ) : null}
             <button
               onClick={toggleAll}
               className={`text-[10px] font-medium transition-colors ${t.chevronBtn}`}
@@ -277,7 +298,7 @@ export default function SettingsModal({
                 </div>
               </div>
 
-              {user && (
+              {user && userTier !== 'enterprise' && (
                 <div>
                   <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Plan</div>
                   <button

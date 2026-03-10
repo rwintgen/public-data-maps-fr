@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, tierFromPriceId } from '@/lib/stripe'
-import { getAdminDb } from '@/lib/firebase-admin'
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
+import { createOrg } from '@/lib/org'
 import type Stripe from 'stripe'
 
 /**
@@ -48,6 +49,27 @@ export async function POST(req: NextRequest) {
           stripeSubscriptionId: subscriptionId,
           subscriptionStatus: sub.status,
         }, { merge: true })
+
+        if (tier === 'enterprise') {
+          const profile = await db.collection('userProfiles').doc(uid).get()
+          if (!profile.data()?.orgId) {
+            try {
+              const authUser = await getAdminAuth().getUser(uid)
+              const orgId = await createOrg(
+                uid,
+                authUser.email ?? '',
+                authUser.displayName ?? null,
+                authUser.photoURL ?? null,
+                authUser.displayName ? `${authUser.displayName}'s Organization` : 'My Organization',
+                5,
+                subscriptionId,
+              )
+              console.log(`[stripe-webhook] auto-provisioned org=${orgId} for uid=${uid}`)
+            } catch (err) {
+              console.error('[stripe-webhook] failed to auto-provision org:', err)
+            }
+          }
+        }
 
         console.log(`[stripe-webhook] checkout.session.completed → uid=${uid} tier=${tier}`)
       }

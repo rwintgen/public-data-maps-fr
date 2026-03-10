@@ -12,10 +12,14 @@
 import { getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 
 function getAdminApp() {
   if (getApps().length > 0) return getApps()[0]
-  return initializeApp({ projectId: process.env.GCP_PROJECT_ID })
+  return initializeApp({
+    projectId: process.env.GCP_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  })
 }
 
 export function getAdminAuth() {
@@ -24,4 +28,8 @@ export function getAdminAuth() {
 
 export function getAdminDb() {
   return getFirestore(getAdminApp())
+}
+
+export function getAdminStorage() {
+  return getStorage(getAdminApp())
 }

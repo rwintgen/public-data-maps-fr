@@ -35,3 +35,8 @@ env:
     value: europe-west4
     availability:
       - RUNTIME
+
+  - variable: FIREBASE_STORAGE_BUCKET
+    value: project-95adcfa2-64d3-4f79-be3.firebasestorage.app
+    availability:
+      - RUNTIME

@@ -78,6 +78,9 @@ export default function Home() {
   const [aiOverviewsList, setAIOverviewsList] = useState<{ siret: string; companyName: string; city: string; createdAt: string }[]>([])
   const [userTier, setUserTier] = useState<UserTier>('free')
   const [discountInfo, setDiscountInfo] = useState<{ code: string; plan: string; expiresAt: string } | null>(null)
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [orgRole, setOrgRole] = useState<'owner' | 'admin' | 'member' | null>(null)
+  const [orgName, setOrgName] = useState<string | null>(null)
   const [bootSteps, setBootSteps] = useState({ auth: false, columns: false, preferences: false, account: false })
 
   const prefsKey = (uid: string) => `prefs_${uid}`
@@ -151,6 +154,11 @@ export default function Home() {
           if (data?.aiOverviews) setAIOverviewsList(data.aiOverviews)
           if (data?.tier) setUserTier(data.tier as UserTier)
           setDiscountInfo(data?.discount ?? null)
+          if (data?.org) {
+            setOrgId(data.org.orgId ?? null)
+            setOrgRole(data.org.orgRole ?? null)
+            setOrgName(data.org.orgName ?? null)
+          }
         })
         .catch(() => {})
         .finally(() => setBootSteps((s) => ({ ...s, account: true })))
@@ -251,6 +259,8 @@ export default function Home() {
     )
   }
 
+  const [orgSetupPrompt, setOrgSetupPrompt] = useState(false)
+
   const handleSearch = async (geometry: any) => {
     if (searchAbort.current) {
       searchAbort.current.abort()
@@ -265,6 +275,10 @@ export default function Home() {
       setResultLimit(null)
       setIsLoading(false)
       setSearchProgress(null)
+      return
+    }
+    if (enterpriseNoOrg) {
+      setOrgSetupPrompt(true)
       return
     }
     if (!geometry.coordinates || !Array.isArray(geometry.coordinates)) {
@@ -450,6 +464,8 @@ export default function Home() {
     return result
   }, [companies, filters, activePresets, customPresets])
 
+  const enterpriseNoOrg = userTier === 'enterprise' && !orgId
+
   const usageWarnings = useMemo(() => {
     const limits = TIER_LIMITS[userTier]
     const warnings: string[] = []
@@ -466,6 +482,10 @@ export default function Home() {
     await signOut(auth)
     setUserTier('free')
     setDiscountInfo(null)
+    setOrgId(null)
+    setOrgRole(null)
+    setOrgName(null)
+    setOrgSetupPrompt(false)
   }
 
   const handleDeleteAccount = useCallback(async () => {
@@ -489,6 +509,10 @@ export default function Home() {
       setSelectedCompany(null)
       setExpandedCompany(null)
       setActiveSearchId(null)
+      setOrgId(null)
+      setOrgRole(null)
+      setOrgName(null)
+      setOrgSetupPrompt(false)
       // Clear localStorage for this user
       try {
         localStorage.removeItem(`pdm_usage_${uid}`)
@@ -838,10 +862,21 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
+              {(orgRole === 'owner' || orgRole === 'admin' || (!orgId && userTier === 'enterprise')) && (
+                <a
+                  href="/org"
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${d.iconBtn}`}
+                  data-tooltip={orgId ? 'Organization' : 'Set up organization'} data-tooltip-pos="bottom"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                  </svg>
+                </a>
+              )}
               {/* Profile */}
               <button
                   onClick={() => { setSettingsModalOpen(true); setSearchExpanded(false) }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all overflow-hidden ${d.iconBtn}`}
+                  className={`relative w-8 h-8 rounded-lg flex items-center justify-center border transition-all overflow-hidden ${d.iconBtn}`}
                   data-tooltip={user ? 'Account' : 'Settings'} data-tooltip-pos="left"
                 >
                   {user?.photoURL ? (
@@ -855,6 +890,7 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   )}
+
                 </button>
             </div>
           </div>
@@ -868,6 +904,30 @@ export default function Home() {
 
         {/* Pre-search filters */}
         {(() => {
+          if (enterpriseNoOrg) {
+            return (
+              <div className={`flex-1 flex flex-col items-center justify-center border-b px-5 py-6 ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+                <svg className={`w-8 h-8 mb-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+                <span className={`text-[12px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Set up your organization
+                </span>
+                <p className={`text-[11px] mt-1.5 text-center leading-relaxed max-w-[260px] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                  Create your organization to start browsing data and unlock all enterprise features.
+                </p>
+                <a
+                  href="/org"
+                  className={`mt-3 text-[11px] font-medium px-4 py-1.5 rounded-lg border transition-colors ${
+                    isDark ? 'bg-white text-gray-900 border-white hover:bg-gray-200' : 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
+                  }`}
+                >
+                  Set up organization
+                </a>
+              </div>
+            )
+          }
+
           const presetsUnlocked = canUsePresets(userTier)
           const totalActive = preQueryPresets.length + preQueryFilters.length + preQueryCustomIds.length
           const locked = isLoading || !!searchArea
@@ -1368,6 +1428,9 @@ export default function Home() {
         onCustomResultLimitChange={setCustomResultLimit}
         defaultPresets={defaultPresets}
         onDefaultPresetsChange={setDefaultPresets}
+        orgId={orgId}
+        orgRole={orgRole}
+        orgName={orgName}
       />
     )}
 
@@ -1404,7 +1467,29 @@ export default function Home() {
       />
     )}
 
-    {paywallFeature && (
+    {orgSetupPrompt && (
+      <Modal isDark={isDark} onClose={() => setOrgSetupPrompt(false)} zIndex="z-[9500]" className={`w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
+        {(handleClose) => (<>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Organization required</h3>
+            <CloseButton onClick={handleClose} isDark={isDark} />
+          </div>
+          <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            Set up your organization before browsing data. All enterprise features will be available once your organization is created.
+          </p>
+          <a
+            href="/org"
+            className={`mt-4 block text-center text-xs font-medium py-2 rounded-lg border transition-colors ${
+              isDark ? 'bg-white text-gray-900 border-white hover:bg-gray-200' : 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
+            }`}
+          >
+            Set up organization
+          </a>
+        </>)}
+      </Modal>
+    )}
+
+    {paywallFeature && userTier !== 'enterprise' && (
       <Paywall
         isDark={isDark}
         featureName={paywallFeature}

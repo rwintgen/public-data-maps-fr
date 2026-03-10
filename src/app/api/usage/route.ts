@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
+import { acceptInvitation } from '@/lib/org'
 
 function getMonthKey(): string {
   const d = new Date()
@@ -50,7 +51,38 @@ export async function GET(req: NextRequest) {
       return { siret: doc.id, companyName: d.companyName || doc.id, city: d.city || '', createdAt: d.createdAt || '' }
     })
 
-    return NextResponse.json({ searchCount, aiOverviewCount, monthKey: month, tier: effectiveTier, subscriptionStatus, discount, aiOverviews })
+    let orgData = profileData.orgId ? {
+      orgId: profileData.orgId,
+      orgRole: profileData.orgRole ?? null,
+      orgName: profileData.orgName ?? null,
+    } : null
+
+    if (!orgData && decoded.email) {
+      try {
+        const inviteSnap = await adminDb.collectionGroup('invitations')
+          .where('email', '==', decoded.email.toLowerCase())
+          .where('status', '==', 'pending')
+          .limit(1)
+          .get()
+        if (!inviteSnap.empty) {
+          const inviteDoc = inviteSnap.docs[0]
+          const invite = inviteDoc.data()
+          const expDate = invite.expiresAt?.toDate ? invite.expiresAt.toDate() : new Date(invite.expiresAt)
+          if (expDate > new Date()) {
+            const result = await acceptInvitation(
+              invite.token,
+              uid,
+              decoded.email ?? '',
+              decoded.name ?? null,
+              decoded.picture ?? null,
+            )
+            orgData = { orgId: result.orgId, orgRole: result.role, orgName: result.orgName }
+          }
+        }
+      } catch { /* non-critical */ }
+    }
+
+    return NextResponse.json({ searchCount, aiOverviewCount, monthKey: month, tier: effectiveTier, subscriptionStatus, discount, aiOverviews, org: orgData })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

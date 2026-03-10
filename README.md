@@ -377,6 +377,7 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] Add pre-search labels to filter results in the back-end
 - [x] Improve Loading elements (while querying and loading user data)
 - [ ] Create company dashboard (seats/permissions management, org settings)
+- [ ] Add more auth features (forgot passsword, SSO sign-in, company sign in)
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)
 - [ ] Mobile-responsive layout
 - [x] Add AI overview
