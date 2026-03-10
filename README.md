@@ -364,14 +364,19 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] Multiple map styles (Default, Themed, Satellite)
 - [x] Saved searches (Firebase Auth + Firestore)
 - [x] Export results (CSV / JSON)
+- [x] Add more export formats
 - [x] Geocoding search bar
 - [x] PostGIS backend for full-dataset performance
 - [x] Deploy via Firebase App Hosting
 - [ ] Import full SIRENE dataset into Cloud SQL
-- [x] Increase result cap beyond 5 000 — now up to 50 000 results
+- [x] Increase result cap beyond 5 000 — now up to 50,000 results (individual plan)
 - [x] Cluster map pins for performance with large result sets
 - [x] Audit and fix all preset filter labels
-- [ ] Add possibility to create custom filter labels
+- [x] Add possibility to create custom filter labels
+- [x] Add pre-search labels to filter results in the back-end
+- [x] Add pre-search labels to filter results in the back-end
+- [x] Improve Loading elements (while querying and loading user data)
+- [ ] Create company dashboard (seats/permissions management, org settings)
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)
 - [ ] Mobile-responsive layout
-- [ ] Add AI overview
+- [x] Add AI overview
