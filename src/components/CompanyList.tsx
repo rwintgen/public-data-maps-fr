@@ -746,8 +746,8 @@ function CompanyList({
             if (!text) return null
             return (
               <div
-                className={`fixed z-[9999] pointer-events-none px-2 py-1 rounded text-[10px] shadow-lg max-w-[240px] ${isDark ? 'bg-gray-800 text-gray-300 border border-white/10' : 'bg-white text-gray-500 border border-gray-200'}`}
-                style={{ left: presetTooltipPos.x, top: presetTooltipPos.y + 16 }}
+                className="fixed z-[10000] pointer-events-none whitespace-nowrap"
+                style={{ left: presetTooltipPos.x - 8, top: presetTooltipPos.y + 14, background: '#1f2937', color: '#f3f4f6', fontSize: '11px', fontWeight: 500, lineHeight: 1.3, padding: '4px 8px', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.25)', transform: 'translateX(-100%)' }}
               >
                 {text}
               </div>

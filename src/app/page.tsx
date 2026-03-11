@@ -888,7 +888,7 @@ export default function Home() {
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
-            <span className="text-[11px] font-medium">Email not verified — <button onClick={() => setEmailVerifyPrompt(true)} className="underline hover:no-underline">resend verification</button></span>
+            <span className="text-[11px] font-medium">Email not verified — <button onClick={() => setEmailVerifyPrompt(true)} className="underline hover:no-underline">resend verification</button> <span className="opacity-60">(check your spam folder)</span></span>
           </div>
         )}
         {usageWarnings.map((msg) => (
@@ -1307,8 +1307,8 @@ export default function Home() {
                   </div>
                   {hoveredDef && presetTooltipPos && (
                     <div
-                      className={`fixed z-[9999] pointer-events-none px-2 py-1 rounded text-[10px] shadow-lg max-w-[240px] ${isDark ? 'bg-gray-800 text-gray-300 border border-white/10' : 'bg-white text-gray-500 border border-gray-200'}`}
-                      style={{ left: presetTooltipPos.x, top: presetTooltipPos.y + 16 }}
+                      className="fixed z-[10000] pointer-events-none whitespace-nowrap"
+                      style={{ left: presetTooltipPos.x - 8, top: presetTooltipPos.y + 14, background: '#1f2937', color: '#f3f4f6', fontSize: '11px', fontWeight: 500, lineHeight: 1.3, padding: '4px 8px', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.25)', transform: 'translateX(-100%)' }}
                     >
                       {'description' in hoveredDef ? (hoveredDef as any).description : `${(hoveredDef as CustomPreset).negate ? 'NOT ' : ''}${(hoveredDef as CustomPreset).column} ${(hoveredDef as CustomPreset).operator} ${(hoveredDef as CustomPreset).value}`}
                     </div>
@@ -1530,7 +1530,7 @@ export default function Home() {
               <CloseButton onClick={handleClose} isDark={isDark} />
             </div>
             <p className={`text-[12px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Please verify your email address before subscribing to a plan. Check your inbox for a verification link.
+              Please verify your email address before subscribing to a plan. Check your inbox (and spam folder) for a verification link.
             </p>
             <button
               onClick={async () => {
@@ -1556,7 +1556,7 @@ export default function Home() {
       <SettingsModal
         isDark={isDark}
         onClose={() => setSettingsModalOpen(false)}
-        user={user ? { uid: user.uid, email: user.email ?? null, displayName: user.displayName ?? null, photoURL: user.photoURL ?? null } : null}
+        user={user ? { uid: user.uid, email: user.email ?? null, displayName: user.displayName ?? null, photoURL: user.photoURL ?? null, emailVerified: user.emailVerified, providerId: user.providerData[0]?.providerId ?? null } : null}
         userTier={userTier}
         themeMode={themeMode}
         setThemeMode={setThemeMode}

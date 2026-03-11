@@ -236,7 +236,7 @@ export function PresetPill({ label, active, isDark, custom, org, disabled, onCli
 export function ConfirmModal({ isDark, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger, onConfirm, onCancel }: {
   isDark: boolean
   title: string
-  message: string
+  message: React.ReactNode
   confirmLabel?: string
   cancelLabel?: string
   danger?: boolean
@@ -251,7 +251,7 @@ export function ConfirmModal({ isDark, title, message, confirmLabel = 'Confirm',
             <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
             <CloseButton onClick={handleClose} isDark={isDark} />
           </div>
-          <p className={`text-[12px] leading-relaxed mb-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{message}</p>
+          <div className={`text-[12px] leading-relaxed mb-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{message}</div>
           <div className="flex gap-2 justify-end">
             <button
               onClick={handleClose}

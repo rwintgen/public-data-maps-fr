@@ -24,7 +24,7 @@ interface Filter {
 interface SettingsModalProps {
   isDark: boolean
   onClose: () => void
-  user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null } | null
+  user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null; emailVerified: boolean; providerId: string | null } | null
   userTier: UserTier
   themeMode: 'system' | 'light' | 'dark'
   setThemeMode: (mode: 'system' | 'light' | 'dark') => void
@@ -195,7 +195,18 @@ export default function SettingsModal({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className={`text-sm font-medium truncate ${t.title}`}>{user.displayName ?? 'User'}</p>
-                  {user.email && <p className={`text-[11px] truncate ${t.label}`}>{user.email}</p>}
+                  {user.email && (
+                    <div className="flex items-center gap-1">
+                      <p className={`text-[11px] truncate ${t.label}`}>{user.email}</p>
+                      {user.emailVerified ? (
+                        <svg className="w-3.5 h-3.5 flex-shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : user.providerId === 'password' ? (
+                        <span className="text-[9px] font-medium text-amber-500 flex-shrink-0">unverified</span>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

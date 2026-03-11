@@ -104,7 +104,7 @@ export default function OrgDashboard() {
   const [editDomain, setEditDomain] = useState('')
   const [settingsSaving, setSettingsSaving] = useState(false)
 
-  const [inviteCostConfirmed, setInviteCostConfirmed] = useState(false)
+  const [inviteSeatConfirm, setInviteSeatConfirm] = useState(false)
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesLoading, setInvoicesLoading] = useState(false)
@@ -1069,8 +1069,8 @@ export default function OrgDashboard() {
                       </select>
                     )}
                     <button
-                      onClick={handleInvite}
-                      disabled={inviteLoading || !inviteEmail.trim() || !inviteCostConfirmed}
+                      onClick={() => { if (!inviteEmail.trim()) return; setInviteSeatConfirm(true) }}
+                      disabled={inviteLoading || !inviteEmail.trim()}
                       className={`text-[11px] font-medium px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'
                       }`}
@@ -1078,17 +1078,6 @@ export default function OrgDashboard() {
                       {inviteLoading ? 'Sending…' : 'Send'}
                     </button>
                   </div>
-                  <label className="flex items-start gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={inviteCostConfirmed}
-                      onChange={(e) => setInviteCostConfirmed(e.target.checked)}
-                      className="mt-0.5 w-3.5 h-3.5 rounded accent-violet-600"
-                    />
-                    <span className={`text-[11px] leading-relaxed ${t.muted}`}>
-                      I understand that when this invitation is accepted, a new seat will be added at <strong className={t.title}>$15/mo</strong> (or <strong className={t.title}>$12/mo</strong> on yearly billing), prorated for the current period.
-                    </span>
-                  </label>
                   {inviteError && <p className="text-[11px] text-red-400">{inviteError}</p>}
                 </div>
               )}
@@ -1819,6 +1808,17 @@ export default function OrgDashboard() {
           danger
           onConfirm={() => { handleTransfer(transferTarget.uid); setTransferTarget(null) }}
           onCancel={() => setTransferTarget(null)}
+        />
+      )}
+
+      {inviteSeatConfirm && (
+        <ConfirmModal
+          isDark={isDark}
+          title="Confirm seat purchase"
+          message={<>Inviting <strong className={isDark ? 'text-white' : 'text-gray-900'}>{inviteEmail}</strong> will add a new seat when accepted.<br /><br />Cost: <strong className={isDark ? 'text-white' : 'text-gray-900'}>$15/mo</strong> (or <strong className={isDark ? 'text-white' : 'text-gray-900'}>$12/mo</strong> on yearly billing), prorated for the current period.<br /><br />Current seats: <strong className={isDark ? 'text-white' : 'text-gray-900'}>{members.length}</strong> → Total after acceptance: <strong className={isDark ? 'text-white' : 'text-gray-900'}>{members.length + 1}</strong></>}
+          confirmLabel="Send invitation"
+          onConfirm={() => { setInviteSeatConfirm(false); handleInvite() }}
+          onCancel={() => setInviteSeatConfirm(false)}
         />
       )}
 
