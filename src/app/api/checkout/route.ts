@@ -14,12 +14,18 @@ export async function POST(req: NextRequest) {
 
   let uid: string
   let email: string | undefined
+  let emailVerified = false
   try {
     const decoded = await getAdminAuth().verifyIdToken(token)
     uid = decoded.uid
     email = decoded.email
+    emailVerified = decoded.email_verified ?? false
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (!emailVerified) {
+    return NextResponse.json({ error: 'Please verify your email address before subscribing.' }, { status: 403 })
   }
 
   const { planId, billing } = await req.json()

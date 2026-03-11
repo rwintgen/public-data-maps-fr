@@ -8,7 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
-import { getMember, listMembers, canManageMembers, canChangeRoles, type OrgRole } from '@/lib/org'
+import { getMember, listMembers, canManageMembers, canChangeRoles, getOrg, decrementOrgSeats, type OrgRole } from '@/lib/org'
 
 async function verifyAndGetOrg(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -110,6 +110,15 @@ export async function DELETE(req: NextRequest) {
     orgName: null,
   })
   await batch.commit()
+
+  const org = await getOrg(ctx.orgId)
+  if (org?.stripeSubscriptionId) {
+    try {
+      await decrementOrgSeats(org.stripeSubscriptionId, ctx.orgId)
+    } catch (err) {
+      console.error('[members] Failed to decrement Stripe seats:', err)
+    }
+  }
 
   return NextResponse.json({ ok: true })
 }

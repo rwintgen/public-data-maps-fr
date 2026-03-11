@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, tierFromPriceId } from '@/lib/stripe'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
-import { createOrg } from '@/lib/org'
+import { createOrg, getOrg } from '@/lib/org'
 import type Stripe from 'stripe'
 
 /**
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
                 authUser.displayName ?? null,
                 authUser.photoURL ?? null,
                 authUser.displayName ? `${authUser.displayName}'s Organization` : 'My Organization',
-                5,
+                1,
                 subscriptionId,
               )
               console.log(`[stripe-webhook] auto-provisioned org=${orgId} for uid=${uid}`)
@@ -83,13 +83,22 @@ export async function POST(req: NextRequest) {
 
       const priceId = sub.items.data[0]?.price.id
       const tier = tierFromPriceId(priceId ?? '') ?? 'free'
+      const quantity = sub.items.data[0]?.quantity ?? 1
 
       await db.collection('userProfiles').doc(uid).set({
         tier,
         subscriptionStatus: sub.status,
       }, { merge: true })
 
-      console.log(`[stripe-webhook] subscription.updated → uid=${uid} tier=${tier} status=${sub.status}`)
+      if (tier === 'enterprise') {
+        const profile = await db.collection('userProfiles').doc(uid).get()
+        const orgId = profile.data()?.orgId
+        if (orgId) {
+          await db.collection('organizations').doc(orgId).update({ seatCount: quantity })
+        }
+      }
+
+      console.log(`[stripe-webhook] subscription.updated → uid=${uid} tier=${tier} status=${sub.status} seats=${quantity}`)
       break
     }
 

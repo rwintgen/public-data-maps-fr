@@ -7,7 +7,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
-import { getMember, getOrg, memberCount, canManageMembers, createInvitation } from '@/lib/org'
+import { getMember, getOrg, memberCount, canManageMembers, createInvitation, listInvitations } from '@/lib/org'
+import { sendInviteEmail } from '@/lib/email'
 
 async function verifyAndGetOrg(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -48,9 +49,12 @@ export async function POST(req: NextRequest) {
   const org = await getOrg(ctx.orgId)
   if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
 
-  const count = await memberCount(ctx.orgId)
-  if (count >= org.seatCount) {
-    return NextResponse.json({ error: 'Seat limit reached' }, { status: 409 })
+  const [count, pending] = await Promise.all([
+    memberCount(ctx.orgId),
+    listInvitations(ctx.orgId, 'pending'),
+  ])
+  if (count + pending.length >= 1000) {
+    return NextResponse.json({ error: 'Organization has reached the maximum seat limit' }, { status: 409 })
   }
 
   const existingSnap = await getAdminDb()
@@ -67,6 +71,11 @@ export async function POST(req: NextRequest) {
 
   const invitation = await createInvitation(ctx.orgId, email, role, ctx.uid)
 
+  const acceptUrl = `${req.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://publicdatamaps.com'}/org?invite=${invitation.token}`
+  const inviterProfile = await getAdminDb().collection('userProfiles').doc(ctx.uid).get()
+  const inviterName = inviterProfile.data()?.displayName ?? null
+  const emailSent = await sendInviteEmail(email, org.name, inviterName, role, acceptUrl)
+
   return NextResponse.json({
     invitation: {
       id: invitation.id,
@@ -75,6 +84,7 @@ export async function POST(req: NextRequest) {
       token: invitation.token,
       expiresAt: invitation.expiresAt,
     },
+    emailSent,
   })
 }
 

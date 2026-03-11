@@ -7,6 +7,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
+  sendEmailVerification,
+  sendPasswordResetEmail,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { Modal, CloseButton } from '@/components/ui'
@@ -28,6 +30,9 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [verificationSent, setVerificationSent] = useState(false)
 
   /** Maps Firebase Auth error codes to user-friendly messages. */
   const friendlyError = (code: string) => {
@@ -53,12 +58,31 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
       } else {
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         if (name.trim()) await updateProfile(user, { displayName: name.trim() })
+        await sendEmailVerification(user)
+        setVerificationSent(true)
       }
       onClose()
     } catch (err: any) {
       setError(friendlyError(err?.code ?? ''))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email address first.')
+      return
+    }
+    setResetLoading(true)
+    setError('')
+    try {
+      await sendPasswordResetEmail(auth, email)
+      setResetSent(true)
+    } catch (err: any) {
+      setError(friendlyError(err?.code ?? ''))
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -93,6 +117,8 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
         dividerText: 'text-gray-600',
         googleBtn: 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300 hover:text-white',
         closeBtn: 'text-gray-600 hover:text-gray-300',
+        forgotBtn: 'text-gray-500 hover:text-gray-300',
+        successText: 'text-green-400 bg-green-400/10 border-green-400/20',
       }
     : {
         modal: 'bg-white border-gray-200',
@@ -108,6 +134,8 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
         dividerText: 'text-gray-400',
         googleBtn: 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900',
         closeBtn: 'text-gray-400 hover:text-gray-700',
+        forgotBtn: 'text-gray-400 hover:text-violet-600',
+        successText: 'text-green-600 bg-green-50 border-green-200',
       }
 
   return (
@@ -119,7 +147,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
             {(['signin', 'signup'] as const).map((t_) => (
               <button
                 key={t_}
-                onClick={() => { setTab(t_); setError('') }}
+                onClick={() => { setTab(t_); setError(''); setResetSent(false); setVerificationSent(false) }}
                 className={`pb-2.5 text-sm font-medium transition-colors ${tab === t_ ? t.tabActive : t.tab}`}
               >
                 {t_ === 'signin' ? 'Sign in' : 'Create account'}
@@ -164,7 +192,29 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
               required
               className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all ${t.input}`}
             />
+            {tab === 'signin' && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+                className={`text-[11px] mt-1 transition-colors ${t.forgotBtn}`}
+              >
+                {resetLoading ? 'Sending…' : 'Forgot password?'}
+              </button>
+            )}
           </div>
+
+          {resetSent && (
+            <div className={`text-xs rounded-lg border px-3 py-2 ${t.successText}`}>
+              Password reset email sent. Check your inbox.
+            </div>
+          )}
+
+          {verificationSent && (
+            <div className={`text-xs rounded-lg border px-3 py-2 ${t.successText}`}>
+              Verification email sent. Please check your inbox.
+            </div>
+          )}
 
           {error && (
             <div className={`text-xs rounded-lg border px-3 py-2 ${t.error}`}>{error}</div>

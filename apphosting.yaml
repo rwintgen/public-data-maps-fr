@@ -40,3 +40,18 @@ env:
     value: project-95adcfa2-64d3-4f79-be3.firebasestorage.app
     availability:
       - RUNTIME
+
+  - variable: STRIPE_PRICE_ENTERPRISE_SEAT_MONTHLY
+    value: price_1T9kW3LzMf4ig82JjqLoJsfh
+    availability:
+      - RUNTIME
+
+  - variable: STRIPE_PRICE_ENTERPRISE_SEAT_YEARLY
+    value: price_1T7eMeLzMf4ig82JoOMn2LnO
+    availability:
+      - RUNTIME
+
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+    availability:
+      - RUNTIME

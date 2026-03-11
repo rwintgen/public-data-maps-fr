@@ -4,6 +4,7 @@
  * Returns: { iconUrl: string }
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { getAdminAuth, getAdminDb, getAdminStorage } from '@/lib/firebase-admin'
 import { getMember, canEditSettings } from '@/lib/org'
 
@@ -52,19 +53,27 @@ export async function POST(req: NextRequest) {
   if (!bucketName) return NextResponse.json({ error: 'Storage not configured (FIREBASE_STORAGE_BUCKET missing)' }, { status: 500 })
 
   try {
+    const downloadToken = randomUUID()
     const bucket = getAdminStorage().bucket(bucketName)
     const gcsFile = bucket.file(filePath)
     await gcsFile.save(buffer, {
       contentType: file.type,
-      metadata: { cacheControl: 'public, max-age=31536000' },
+      metadata: {
+        cacheControl: 'public, max-age=31536000',
+        metadata: { firebaseStorageDownloadTokens: downloadToken },
+      },
     })
-    await gcsFile.makePublic()
 
-    const iconUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`
+    const encodedPath = encodeURIComponent(filePath)
+    const iconUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`
     await getAdminDb().collection('organizations').doc(orgId).update({ iconUrl })
     return NextResponse.json({ iconUrl })
   } catch (err: any) {
-    console.error('Logo upload error:', err)
-    return NextResponse.json({ error: err?.message ?? 'Storage upload failed' }, { status: 500 })
+    console.error('Logo upload error:', JSON.stringify(err?.message ?? err))
+    const code = err?.code ?? err?.errors?.[0]?.reason
+    if (code === 404 || code === 'notFound') {
+      return NextResponse.json({ error: 'Storage bucket not found. Please enable Firebase Storage in the Firebase Console.' }, { status: 500 })
+    }
+    return NextResponse.json({ error: err?.message ?? 'Logo upload failed. Please try again.' }, { status: 500 })
   }
 }

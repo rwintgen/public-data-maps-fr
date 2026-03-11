@@ -31,7 +31,7 @@ import {
 } from '@/lib/usage'
 import { auth, db } from '@/lib/firebase'
 import { useAuthState } from 'react-firebase-hooks/auth'
-import { signOut } from 'firebase/auth'
+import { signOut, sendEmailVerification } from 'firebase/auth'
 import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
@@ -54,6 +54,7 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [user, authLoading] = useAuthState(auth)
   const [authOpen, setAuthOpen] = useState(false)
+  const [emailVerifyPrompt, setEmailVerifyPrompt] = useState(false)
   const [expandedCompany, setExpandedCompany] = useState<any>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [paywallFeature, setPaywallFeature] = useState<string | null>(null)
@@ -613,6 +614,10 @@ export default function Home() {
   /** Redirect the user to a Stripe Checkout session for the selected plan. */
   const handleCheckout = useCallback(async (planId: string, billing: 'monthly' | 'yearly') => {
     if (!user) { setAuthOpen(true); return }
+    if (user.providerData[0]?.providerId === 'password' && !user.emailVerified) {
+      setEmailVerifyPrompt(true)
+      return
+    }
     try {
       const token = await user.getIdToken()
       const res = await fetch('/api/checkout', {
@@ -621,6 +626,10 @@ export default function Home() {
         body: JSON.stringify({ planId, billing }),
       })
       const data = await res.json()
+      if (res.status === 403 && data.error?.includes('verify')) {
+        setEmailVerifyPrompt(true)
+        return
+      }
       if (data.url) window.location.href = data.url
     } catch {}
   }, [user])
@@ -1382,6 +1391,37 @@ export default function Home() {
         onClose={() => setAuthOpen(false)}
         isSigningIn={isSigningIn}
       />
+    )}
+
+    {emailVerifyPrompt && (
+      <Modal isDark={isDark} onClose={() => setEmailVerifyPrompt(false)} zIndex="z-[9800]" className={`w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
+        {(handleClose) => (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Verify your email</h3>
+              <CloseButton onClick={handleClose} isDark={isDark} />
+            </div>
+            <p className={`text-[12px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              Please verify your email address before subscribing to a plan. Check your inbox for a verification link.
+            </p>
+            <button
+              onClick={async () => {
+                if (user) {
+                  try { await sendEmailVerification(user); alert('Verification email sent!') } catch { alert('Could not send email. Try again later.') }
+                }
+              }}
+              className={`w-full text-[12px] font-medium py-2 rounded-lg transition-colors ${
+                isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'
+              }`}
+            >
+              Resend verification email
+            </button>
+            <button onClick={handleClose} className={`w-full text-[11px] font-medium py-1.5 transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
+              Close
+            </button>
+          </div>
+        )}
+      </Modal>
     )}
 
     {settingsModalOpen && (

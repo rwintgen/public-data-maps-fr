@@ -9,6 +9,7 @@
 import { getAdminDb } from './firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import crypto from 'crypto'
+import { getStripe } from './stripe'
 
 export type OrgRole = 'owner' | 'admin' | 'member'
 
@@ -20,6 +21,7 @@ export interface Organization {
   createdAt: FirebaseFirestore.Timestamp
   seatCount: number
   stripeSubscriptionId: string | null
+  stripeCustomerId?: string | null
   settings: {
     defaultPresets: string[]
     defaultResultLimit: number | null
@@ -203,9 +205,6 @@ export async function acceptInvitation(
   const org = await getOrg(orgId)
   if (!org) throw new Error('Organization not found')
 
-  const count = await memberCount(orgId)
-  if (count >= org.seatCount) throw new Error('Organization has reached its seat limit')
-
   const batch = db.batch()
 
   batch.update(inviteDoc.ref, { status: 'accepted' })
@@ -229,6 +228,15 @@ export async function acceptInvitation(
   })
 
   await batch.commit()
+
+  if (org.stripeSubscriptionId) {
+    try {
+      await incrementOrgSeats(org.stripeSubscriptionId, orgId)
+    } catch (err) {
+      console.error('[org] Failed to increment Stripe seats:', err)
+    }
+  }
+
   return { orgId, orgName: org.name, role: invite.role }
 }
 
@@ -302,4 +310,38 @@ export function canEditSettings(role: OrgRole): boolean {
 
 export function canViewDashboard(role: OrgRole): boolean {
   return role === 'owner' || role === 'admin'
+}
+
+/**
+ * Increments the Stripe subscription quantity by 1 (new seat) and syncs to org.
+ * Called after a member joins. Stripe auto-prorates the charge.
+ */
+export async function incrementOrgSeats(subscriptionId: string, orgId: string): Promise<void> {
+  const stripe = getStripe()
+  const sub = await stripe.subscriptions.retrieve(subscriptionId)
+  const item = sub.items.data[0]
+  if (!item) return
+  const newQty = (item.quantity ?? 1) + 1
+  await stripe.subscriptionItems.update(item.id, {
+    quantity: newQty,
+    proration_behavior: 'create_prorations',
+  })
+  await getAdminDb().collection('organizations').doc(orgId).update({ seatCount: newQty })
+}
+
+/**
+ * Decrements the Stripe subscription quantity by 1 (removed seat) and syncs to org.
+ * Called after a member is removed. Stripe issues a prorated credit.
+ */
+export async function decrementOrgSeats(subscriptionId: string, orgId: string): Promise<void> {
+  const stripe = getStripe()
+  const sub = await stripe.subscriptions.retrieve(subscriptionId)
+  const item = sub.items.data[0]
+  if (!item) return
+  const newQty = Math.max(1, (item.quantity ?? 1) - 1)
+  await stripe.subscriptionItems.update(item.id, {
+    quantity: newQty,
+    proration_behavior: 'create_prorations',
+  })
+  await getAdminDb().collection('organizations').doc(orgId).update({ seatCount: newQty })
 }

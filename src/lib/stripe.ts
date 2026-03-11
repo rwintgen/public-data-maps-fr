@@ -27,10 +27,16 @@ export const PRICE_IDS: Record<string, Record<string, string | undefined>> = {
     yearly: process.env.STRIPE_PRICE_INDIVIDUAL_YEARLY,
   },
   enterprise: {
-    monthly: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
-    yearly: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY,
+    monthly: process.env.STRIPE_PRICE_ENTERPRISE_SEAT_MONTHLY,
+    yearly: process.env.STRIPE_PRICE_ENTERPRISE_SEAT_YEARLY,
   },
 }
+
+/** Per-seat enterprise pricing (monthly/yearly amounts shown to users). */
+export const SEAT_PRICING = {
+  monthly: 15,
+  yearly: 12,
+} as const
 
 /** Reverse-maps a Stripe price ID back to a UserTier value. */
 export function tierFromPriceId(priceId: string): 'individual' | 'enterprise' | null {

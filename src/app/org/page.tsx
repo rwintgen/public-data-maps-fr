@@ -6,7 +6,7 @@ import { useAuthState } from 'react-firebase-hooks/auth'
 import { Button, CardSection, SectionTitle } from '@/components/ui'
 
 type OrgRole = 'owner' | 'admin' | 'member'
-type Section = 'overview' | 'members' | 'invitations' | 'settings' | 'billing'
+type Section = 'overview' | 'members' | 'invitations' | 'settings' | 'billing' | 'usage' | 'connectors'
 
 interface Member {
   uid: string
@@ -38,6 +38,20 @@ interface OrgData {
   settings: { defaultPresets: string[]; defaultResultLimit: number | null }
 }
 
+interface Invoice {
+  id: string
+  number: string | null
+  amountDue: number
+  amountPaid: number
+  currency: string
+  status: string | null
+  created: number
+  periodStart: number
+  periodEnd: number
+  hostedUrl: string | null
+  pdfUrl: string | null
+}
+
 export default function OrgDashboard() {
   const [user, authLoading] = useAuthState(auth)
   const [section, setSection] = useState<Section>('overview')
@@ -51,7 +65,6 @@ export default function OrgDashboard() {
   const [noOrg, setNoOrg] = useState(false)
 
   const [createName, setCreateName] = useState('')
-  const [createSeatCount, setCreateSeatCount] = useState(5)
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
@@ -64,9 +77,26 @@ export default function OrgDashboard() {
   const [logoError, setLogoError] = useState<string | null>(null)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
 
+  const [usageData, setUsageData] = useState<{ month: string; totalSearches: number; totalAiOverviews: number; members: { uid: string; displayName: string | null; email: string; role: OrgRole; searchCount: number; aiOverviewCount: number; lastActiveAt: string | null }[] } | null>(null)
+  const [usageLoading, setUsageLoading] = useState(false)
+
   const [editName, setEditName] = useState('')
   const [editDomain, setEditDomain] = useState('')
   const [settingsSaving, setSettingsSaving] = useState(false)
+
+  const [inviteCostConfirmed, setInviteCostConfirmed] = useState(false)
+
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [invoicesLoading, setInvoicesLoading] = useState(false)
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false)
+
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [csvParsed, setCsvParsed] = useState<{ headers: string[]; rows: Record<string, string>[] } | null>(null)
+  const [csvSiretColumn, setCsvSiretColumn] = useState('')
+  const [csvMatchStep, setCsvMatchStep] = useState<'upload' | 'map' | 'result'>('upload')
+  const [csvMatching, setCsvMatching] = useState(false)
+  const [csvResult, setCsvResult] = useState<{ total: number; matchedCount: number; unmatchedCount: number; matched: Record<string, string>[]; unmatched: string[] } | null>(null)
+  const [csvError, setCsvError] = useState<string | null>(null)
 
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
   const [systemDark, setSystemDark] = useState(true)
@@ -172,7 +202,7 @@ export default function OrgDashboard() {
       const res = await fetch('/api/org/create', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: createName.trim(), seatCount: createSeatCount }),
+        body: JSON.stringify({ name: createName.trim() }),
       })
       const data = await res.json()
       if (!res.ok) { setCreateError(data.error); return }
@@ -325,6 +355,39 @@ export default function OrgDashboard() {
     img.src = url
   }
 
+  const fetchUsage = useCallback(async () => {
+    if (!user || !org) return
+    setUsageLoading(true)
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch('/api/org/usage', { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) setUsageData(await res.json())
+    } catch {}
+    finally { setUsageLoading(false) }
+  }, [user, org])
+
+  useEffect(() => {
+    if (section === 'usage' && !usageData && !usageLoading) fetchUsage()
+  }, [section, usageData, usageLoading, fetchUsage])
+
+  const fetchInvoices = useCallback(async () => {
+    if (!user || !org) return
+    setInvoicesLoading(true)
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch(`/api/org/invoices?orgId=${org.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const data = await res.json()
+        setInvoices(data.invoices ?? [])
+      }
+    } catch {}
+    finally { setInvoicesLoading(false); setInvoicesLoaded(true) }
+  }, [user, org])
+
+  useEffect(() => {
+    if (section === 'billing' && !invoicesLoaded && !invoicesLoading) fetchInvoices()
+  }, [section, invoicesLoaded, invoicesLoading, fetchInvoices])
+
   const t = isDark
     ? {
         bg: 'bg-gray-950',
@@ -417,19 +480,6 @@ export default function OrgDashboard() {
             />
           </div>
 
-          <div>
-            <label className={`block text-[10px] uppercase tracking-widest font-semibold mb-1.5 ${t.label}`}>Seat count</label>
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={createSeatCount}
-              onChange={(e) => setCreateSeatCount(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
-              className={`w-24 text-[13px] px-3 py-2 rounded-lg border outline-none transition-colors ${t.input}`}
-            />
-            <p className={`text-[10px] mt-1 ${t.muted}`}>You can change this later.</p>
-          </div>
-
           {createError && <p className="text-[11px] text-red-400">{createError}</p>}
 
           <button
@@ -467,6 +517,8 @@ export default function OrgDashboard() {
     { key: 'overview', label: 'Overview' },
     { key: 'members', label: 'Members' },
     { key: 'invitations', label: 'Invitations' },
+    { key: 'usage', label: 'Usage' },
+    { key: 'connectors', label: 'Connectors' },
     { key: 'settings', label: 'Settings' },
     { key: 'billing', label: 'Billing', ownerOnly: true },
   ]
@@ -502,6 +554,19 @@ export default function OrgDashboard() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar nav */}
         <nav className={`w-[200px] flex-shrink-0 border-r p-3 space-y-0.5 ${t.sidebar}`}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5 mb-2">
+            {org.iconUrl ? (
+              <img src={org.iconUrl} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+            ) : (
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+                <svg className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+              </div>
+            )}
+            <p className={`text-[12px] font-semibold truncate ${t.title}`}>{org.name}</p>
+          </div>
+          <div className={`border-b mb-2 ${t.border}`} />
           {navItems
             .filter((item) => !item.ownerOnly || isOwner)
             .map((item) => (
@@ -532,36 +597,44 @@ export default function OrgDashboard() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className={`rounded-xl border p-4 ${t.card}`}>
+                <button
+                  onClick={() => setSection('members')}
+                  className={`rounded-xl border p-4 text-left transition-colors ${t.card} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                >
                   <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Members</p>
                   <p className={`text-2xl font-bold mt-1 ${t.title}`}>{members.length}</p>
-                  <p className={`text-[11px] ${t.muted}`}>of {org.seatCount} seats</p>
-                </div>
-                <div className={`rounded-xl border p-4 ${t.card}`}>
+                  <p className={`text-[11px] ${t.muted}`}>active {members.length === 1 ? 'member' : 'members'}</p>
+                </button>
+                <button
+                  onClick={() => setSection('invitations')}
+                  className={`rounded-xl border p-4 text-left transition-colors ${t.card} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                >
                   <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Pending invitations</p>
                   <p className={`text-2xl font-bold mt-1 ${t.title}`}>{pendingInvites.length}</p>
-                </div>
-                <div className={`rounded-xl border p-4 ${t.card}`}>
+                </button>
+                <button
+                  onClick={() => setSection('settings')}
+                  className={`rounded-xl border p-4 text-left transition-colors ${t.card} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                >
                   <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Auto-join domain</p>
                   <p className={`text-sm font-medium mt-1 ${t.title}`}>{org.domain ?? '—'}</p>
-                </div>
+                </button>
                 <div className={`rounded-xl border p-4 ${t.card}`}>
                   <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Your role</p>
                   <div className="mt-1">{myRole && roleBadge(myRole)}</div>
                 </div>
               </div>
 
-              {/* Seat usage bar */}
-              <div className={`rounded-xl border p-4 ${t.card}`}>
-                <p className={`text-[10px] uppercase tracking-widest font-semibold mb-2 ${t.label}`}>Seat usage</p>
-                <div className={`h-2 rounded-full ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                  <div
-                    className={`h-full rounded-full transition-all ${isDark ? 'bg-white/30' : 'bg-violet-500'}`}
-                    style={{ width: `${Math.min(100, (members.length / org.seatCount) * 100)}%` }}
-                  />
-                </div>
-                <p className={`text-[11px] mt-1.5 ${t.muted}`}>{members.length} / {org.seatCount} seats used</p>
-              </div>
+              {isOwner && (
+                <button
+                  onClick={() => setSection('billing')}
+                  className={`w-full rounded-xl border p-4 text-left transition-colors ${t.card} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                >
+                  <p className={`text-[10px] uppercase tracking-widest font-semibold mb-1 ${t.label}`}>Billing & seats</p>
+                  <p className={`text-2xl font-bold ${t.title}`}>{members.length}</p>
+                  <p className={`text-[11px] mt-1 ${t.muted}`}>active seats · click to manage billing</p>
+                </button>
+              )}
             </div>
           )}
 
@@ -570,7 +643,7 @@ export default function OrgDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className={`text-lg font-semibold ${t.title}`}>Members</h2>
-                  <p className={`text-sm ${t.subtitle}`}>{members.length} of {org.seatCount} seats</p>
+                  <p className={`text-sm ${t.subtitle}`}>{members.length} {members.length === 1 ? 'member' : 'members'}</p>
                 </div>
                 {canManage && (
                   <button
@@ -650,7 +723,7 @@ export default function OrgDashboard() {
                     )}
                     <button
                       onClick={handleInvite}
-                      disabled={inviteLoading || !inviteEmail.trim()}
+                      disabled={inviteLoading || !inviteEmail.trim() || !inviteCostConfirmed}
                       className={`text-[11px] font-medium px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'
                       }`}
@@ -658,6 +731,17 @@ export default function OrgDashboard() {
                       {inviteLoading ? 'Sending…' : 'Send'}
                     </button>
                   </div>
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={inviteCostConfirmed}
+                      onChange={(e) => setInviteCostConfirmed(e.target.checked)}
+                      className="mt-0.5 w-3.5 h-3.5 rounded accent-violet-600"
+                    />
+                    <span className={`text-[11px] leading-relaxed ${t.muted}`}>
+                      I understand that when this invitation is accepted, a new seat will be added at <strong className={t.title}>$15/mo</strong> (or <strong className={t.title}>$12/mo</strong> on yearly billing), prorated for the current period.
+                    </span>
+                  </label>
                   {inviteError && <p className="text-[11px] text-red-400">{inviteError}</p>}
                 </div>
               )}
@@ -702,6 +786,74 @@ export default function OrgDashboard() {
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {section === 'usage' && (
+            <div className="space-y-4 max-w-3xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className={`text-lg font-semibold ${t.title}`}>Usage</h2>
+                  <p className={`text-sm ${t.subtitle}`}>Member activity this month{usageData ? ` (${usageData.month})` : ''}</p>
+                </div>
+                <button
+                  onClick={fetchUsage}
+                  disabled={usageLoading}
+                  className={`text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  {usageLoading ? 'Loading…' : 'Refresh'}
+                </button>
+              </div>
+
+              {usageData && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className={`rounded-xl border p-4 ${t.card}`}>
+                      <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Total searches</p>
+                      <p className={`text-2xl font-bold mt-1 ${t.title}`}>{usageData.totalSearches.toLocaleString()}</p>
+                    </div>
+                    <div className={`rounded-xl border p-4 ${t.card}`}>
+                      <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>AI overviews</p>
+                      <p className={`text-2xl font-bold mt-1 ${t.title}`}>{usageData.totalAiOverviews.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  <div className={`rounded-xl border overflow-hidden ${t.card}`}>
+                    <div className={`grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 border-b ${t.border}`}>
+                      <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Member</p>
+                      <p className={`text-[10px] uppercase tracking-widest font-semibold text-right ${t.label}`}>Searches</p>
+                      <p className={`text-[10px] uppercase tracking-widest font-semibold text-right ${t.label}`}>AI</p>
+                    </div>
+                    {[...usageData.members]
+                      .sort((a, b) => b.searchCount - a.searchCount)
+                      .map((m, i) => {
+                        const maxSearches = Math.max(1, ...usageData.members.map((mm) => mm.searchCount))
+                        return (
+                          <div key={m.uid} className={`grid grid-cols-[1fr_80px_80px] gap-2 items-center px-4 py-2.5 ${i > 0 ? `border-t ${t.border}` : ''}`}>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className={`text-[12px] font-medium truncate ${t.title}`}>{m.displayName ?? m.email}</p>
+                                {roleBadge(m.role)}
+                              </div>
+                              <div className={`h-1 rounded-full mt-1.5 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                                <div
+                                  className={`h-full rounded-full ${isDark ? 'bg-white/20' : 'bg-violet-400'}`}
+                                  style={{ width: `${(m.searchCount / maxSearches) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                            <p className={`text-[12px] font-medium text-right tabular-nums ${t.title}`}>{m.searchCount.toLocaleString()}</p>
+                            <p className={`text-[12px] font-medium text-right tabular-nums ${t.title}`}>{m.aiOverviewCount.toLocaleString()}</p>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </>
+              )}
+
+              {!usageData && usageLoading && (
+                <div className={`text-center py-12 text-[12px] ${t.muted}`}>Loading usage data…</div>
+              )}
             </div>
           )}
 
@@ -811,20 +963,17 @@ export default function OrgDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Current plan</p>
-                    <p className={`text-sm font-medium mt-1 ${t.title}`}>Enterprise</p>
+                    <p className={`text-sm font-medium mt-1 ${t.title}`}>Enterprise — per seat</p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Seats</p>
-                    <p className={`text-sm font-medium mt-1 ${t.title}`}>{members.length} / {org.seatCount}</p>
+                    <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Active seats</p>
+                    <p className={`text-sm font-medium mt-1 ${t.title}`}>{members.length}</p>
                   </div>
                 </div>
 
-                <div className={`h-2 rounded-full ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-                  <div
-                    className={`h-full rounded-full transition-all ${isDark ? 'bg-white/30' : 'bg-violet-500'}`}
-                    style={{ width: `${Math.min(100, (members.length / org.seatCount) * 100)}%` }}
-                  />
-                </div>
+                <p className={`text-[11px] leading-relaxed ${t.muted}`}>
+                  Seats are allocated automatically when a member accepts an invitation and released when a member is removed. Charges are prorated.
+                </p>
 
                 <button
                   onClick={handleBilling}
@@ -834,6 +983,254 @@ export default function OrgDashboard() {
                 >
                   Manage subscription →
                 </button>
+              </div>
+
+              <div className={`rounded-xl border overflow-hidden ${t.card}`}>
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${t.border}`}>
+                  <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Invoices</p>
+                  <button
+                    onClick={fetchInvoices}
+                    disabled={invoicesLoading}
+                    className={`text-[10px] font-medium px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-50 ${isDark ? 'border-white/10 text-gray-400 hover:bg-white/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    {invoicesLoading ? 'Loading…' : 'Refresh'}
+                  </button>
+                </div>
+
+                {invoicesLoading && !invoicesLoaded ? (
+                  <div className={`px-4 py-8 text-center text-[12px] ${t.muted}`}>Loading invoices…</div>
+                ) : invoices.length === 0 ? (
+                  <div className={`px-4 py-8 text-center text-[12px] ${t.muted}`}>No invoices yet</div>
+                ) : (
+                  invoices.map((inv, i) => {
+                    const statusColors: Record<string, string> = {
+                      paid: isDark ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-700',
+                      open: isDark ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-50 text-yellow-700',
+                      past_due: isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700',
+                      void: isDark ? 'bg-gray-500/15 text-gray-500' : 'bg-gray-100 text-gray-500',
+                      draft: isDark ? 'bg-gray-500/15 text-gray-500' : 'bg-gray-100 text-gray-500',
+                    }
+                    const statusLabel = inv.status === 'past_due' ? 'Past due' : inv.status ?? '—'
+                    const amount = (inv.amountDue / 100).toLocaleString('en-US', { style: 'currency', currency: inv.currency.toUpperCase() })
+                    return (
+                      <div key={inv.id} className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? `border-t ${t.border}` : ''}`}>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[12px] font-medium ${t.title}`}>{inv.number ?? inv.id.slice(-8)}</p>
+                          <p className={`text-[10px] ${t.muted}`}>
+                            {new Date(inv.periodStart * 1000).toLocaleDateString()} – {new Date(inv.periodEnd * 1000).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <p className={`text-[12px] font-medium ${t.title}`}>{amount}</p>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColors[inv.status ?? ''] ?? (isDark ? 'bg-gray-500/15 text-gray-500' : 'bg-gray-100 text-gray-500')}`}>
+                          {statusLabel}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {inv.hostedUrl && (
+                            <a href={inv.hostedUrl} target="_blank" rel="noreferrer" className={`text-[10px] font-medium px-2 py-0.5 rounded border transition-colors ${isDark ? 'border-white/10 text-gray-400 hover:text-white hover:bg-white/5' : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
+                              View
+                            </a>
+                          )}
+                          {inv.pdfUrl && (
+                            <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className={`text-[10px] font-medium px-2 py-0.5 rounded border transition-colors ${isDark ? 'border-white/10 text-gray-400 hover:text-white hover:bg-white/5' : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
+                              PDF
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {section === 'connectors' && (
+            <div className="space-y-4 max-w-3xl">
+              <div>
+                <h2 className={`text-lg font-semibold ${t.title}`}>Connectors</h2>
+                <p className={`text-sm ${t.subtitle}`}>Enrich your data by matching it against the SIRENE database.</p>
+              </div>
+
+              {/* CSV Matcher */}
+              <div className={`rounded-xl border p-4 space-y-4 ${t.card}`}>
+                <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>CSV SIRENE Matcher</p>
+
+                {csvMatchStep === 'upload' && (
+                  <div className="space-y-3">
+                    <p className={`text-[12px] ${t.muted}`}>Upload a CSV file containing SIRET numbers. We'll match each row against the national SIRENE database and return enriched company data.</p>
+                    <label className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer py-8 transition-colors ${isDark ? 'border-white/10 hover:border-white/20 text-gray-500 hover:text-gray-400' : 'border-gray-200 hover:border-gray-300 text-gray-400 hover:text-gray-500'}`}>
+                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+                      <span className={`text-[12px] font-medium ${t.title}`}>{csvFile ? csvFile.name : 'Click to upload a CSV file'}</span>
+                      <span className={`text-[10px] ${t.muted}`}>Max 10 MB · Max 10,000 rows</span>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null
+                          setCsvFile(file)
+                          setCsvParsed(null)
+                          setCsvSiretColumn('')
+                          setCsvError(null)
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              const text = ev.target?.result as string
+                              const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(Boolean)
+                              if (lines.length < 2) { setCsvError('CSV must have at least one data row.'); return }
+                              const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
+                              const preview = lines.slice(1, 6).map((line) => {
+                                const vals = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''))
+                                const obj: Record<string, string> = {}
+                                headers.forEach((h, i) => { obj[h] = vals[i] ?? '' })
+                                return obj
+                              })
+                              setCsvParsed({ headers, rows: preview })
+                            }
+                            reader.readAsText(file)
+                          }
+                        }}
+                      />
+                    </label>
+                    {csvFile && csvParsed && (
+                      <button
+                        onClick={() => setCsvMatchStep('map')}
+                        className={`w-full text-[11px] font-medium py-2 rounded-lg transition-colors ${isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'}`}
+                      >
+                        Next: Map columns →
+                      </button>
+                    )}
+                    {csvError && <p className="text-[11px] text-red-400">{csvError}</p>}
+                  </div>
+                )}
+
+                {csvMatchStep === 'map' && csvParsed && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className={`text-[10px] uppercase tracking-widest font-semibold mb-1.5 ${t.label}`}>SIRET column</p>
+                      <select
+                        value={csvSiretColumn}
+                        onChange={(e) => setCsvSiretColumn(e.target.value)}
+                        className={`w-full text-[12px] px-3 py-1.5 rounded-lg border outline-none ${t.input}`}
+                      >
+                        <option value="">— Select column —</option>
+                        {csvParsed.headers.map((h) => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <p className={`text-[10px] mt-1 ${t.muted}`}>Which column contains 14-digit SIRET numbers?</p>
+                    </div>
+
+                    <div className={`rounded-lg border overflow-auto ${t.border}`}>
+                      <table className="min-w-full text-[11px]">
+                        <thead>
+                          <tr className={`border-b ${t.border}`}>
+                            {csvParsed.headers.map((h) => (
+                              <th key={h} className={`px-3 py-2 text-left font-semibold ${t.label} whitespace-nowrap ${h === csvSiretColumn ? (isDark ? 'bg-white/10' : 'bg-violet-50') : ''}`}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvParsed.rows.map((row, i) => (
+                            <tr key={i} className={i > 0 ? `border-t ${t.border}` : ''}>
+                              {csvParsed.headers.map((h) => (
+                                <td key={h} className={`px-3 py-1.5 ${t.text} whitespace-nowrap ${h === csvSiretColumn ? (isDark ? 'bg-white/5' : 'bg-violet-50/50') : ''}`}>{row[h]}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setCsvMatchStep('upload'); setCsvError(null) }}
+                        className={`flex-1 text-[11px] font-medium py-2 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-400 hover:bg-white/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!csvSiretColumn || !csvFile || !org) return
+                          setCsvMatching(true)
+                          setCsvError(null)
+                          try {
+                            const token = await user!.getIdToken()
+                            const fd = new FormData()
+                            fd.append('file', csvFile)
+                            fd.append('orgId', org.id)
+                            fd.append('siretColumn', csvSiretColumn)
+                            const res = await fetch('/api/org/connectors/csv', {
+                              method: 'POST',
+                              headers: { Authorization: `Bearer ${token}` },
+                              body: fd,
+                            })
+                            const data = await res.json()
+                            if (!res.ok) { setCsvError(data.error ?? 'Match failed'); return }
+                            setCsvResult(data)
+                            setCsvMatchStep('result')
+                          } catch {
+                            setCsvError('An error occurred. Please try again.')
+                          } finally {
+                            setCsvMatching(false)
+                          }
+                        }}
+                        disabled={!csvSiretColumn || csvMatching}
+                        className={`flex-1 text-[11px] font-medium py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'}`}
+                      >
+                        {csvMatching ? 'Matching…' : 'Run match →'}
+                      </button>
+                    </div>
+                    {csvError && <p className="text-[11px] text-red-400">{csvError}</p>}
+                  </div>
+                )}
+
+                {csvMatchStep === 'result' && csvResult && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className={`rounded-lg border p-3 text-center ${t.card}`}>
+                        <p className={`text-xl font-bold ${t.title}`}>{csvResult.total.toLocaleString()}</p>
+                        <p className={`text-[10px] ${t.muted}`}>Total rows</p>
+                      </div>
+                      <div className={`rounded-lg border p-3 text-center ${t.card}`}>
+                        <p className={`text-xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>{csvResult.matchedCount.toLocaleString()}</p>
+                        <p className={`text-[10px] ${t.muted}`}>Matched</p>
+                      </div>
+                      <div className={`rounded-lg border p-3 text-center ${t.card}`}>
+                        <p className={`text-xl font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>{csvResult.unmatchedCount.toLocaleString()}</p>
+                        <p className={`text-[10px] ${t.muted}`}>Unmatched</p>
+                      </div>
+                    </div>
+
+                    {csvResult.matched.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const headers = Object.keys(csvResult.matched[0])
+                          const csv = [headers.join(','), ...csvResult.matched.map((r) => headers.map((h) => `"${(r[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n')
+                          const blob = new Blob([csv], { type: 'text/csv' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url; a.download = 'enriched.csv'; a.click()
+                          URL.revokeObjectURL(url)
+                        }}
+                        className={`w-full text-[11px] font-medium py-2 rounded-lg transition-colors ${isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'}`}
+                      >
+                        Download enriched CSV ({csvResult.matchedCount.toLocaleString()} rows)
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => { setCsvMatchStep('upload'); setCsvFile(null); setCsvParsed(null); setCsvSiretColumn(''); setCsvResult(null); setCsvError(null) }}
+                      className={`w-full text-[11px] font-medium py-2 rounded-lg border transition-colors ${isDark ? 'border-white/10 text-gray-400 hover:bg-white/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      Match another file
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Coming soon */}
+              <div className={`rounded-xl border p-4 space-y-2 ${t.card} opacity-50`}>
+                <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>More connectors — coming soon</p>
+                <p className={`text-[12px] ${t.muted}`}>Salesforce · PostgreSQL / MySQL · Google Sheets · REST API webhooks</p>
               </div>
             </div>
           )}
