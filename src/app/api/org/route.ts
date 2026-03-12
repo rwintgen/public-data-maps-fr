@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import { getOrg, listMembers, listInvitations } from '@/lib/org'
+import { getStripe } from '@/lib/stripe'
 
 async function verifyToken(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -32,6 +33,18 @@ export async function GET(req: NextRequest) {
 
   if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
 
+  let billingInterval: 'monthly' | 'yearly' | null = null
+  let seatPrice: number | null = null
+  if (org.stripeSubscriptionId) {
+    try {
+      const sub = await getStripe().subscriptions.retrieve(org.stripeSubscriptionId)
+      const interval = sub.items.data[0]?.price.recurring?.interval
+      billingInterval = interval === 'year' ? 'yearly' : 'monthly'
+      const unitAmount = sub.items.data[0]?.price.unit_amount
+      if (unitAmount) seatPrice = unitAmount / 100
+    } catch {}
+  }
+
   return NextResponse.json({
     org: {
       id: org.id,
@@ -41,6 +54,10 @@ export async function GET(req: NextRequest) {
       ownerId: org.ownerId,
       seatCount: org.seatCount,
       settings: org.settings,
+      billingInterval,
+      seatPrice,
+      subscriptionStatus: (org as any).subscriptionStatus ?? null,
+      subscriptionEndDate: (org as any).subscriptionEndDate ?? null,
     },
     members: members.map((m) => ({
       uid: m.uid,

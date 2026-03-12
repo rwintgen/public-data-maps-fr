@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminAuth } from '@/lib/firebase-admin'
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
 import { getOrg, getMember } from '@/lib/org'
 import { getStripe } from '@/lib/stripe'
 
@@ -27,13 +27,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  if (!org.stripeCustomerId) {
+  let customerId = org.stripeCustomerId
+  if (!customerId) {
+    const profile = await getAdminDb().collection('userProfiles').doc(uid).get()
+    customerId = profile.data()?.stripeCustomerId
+  }
+  if (!customerId) {
     return NextResponse.json({ invoices: [] })
   }
 
   const stripe = getStripe()
   const { data: stripeInvoices } = await stripe.invoices.list({
-    customer: org.stripeCustomerId,
+    customer: customerId,
     limit: 20,
   })
 

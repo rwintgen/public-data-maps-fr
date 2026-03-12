@@ -157,7 +157,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
       priceLine: null,
       priceUnit: '/mo',
       priceNote: null,
-      cta: 'Subscribe',
+      cta: 'Start free trial',
       popular: true,
       isFree: false,
       features: [

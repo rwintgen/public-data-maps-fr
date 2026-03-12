@@ -246,8 +246,8 @@ function CompanyList({
         chipClear: 'text-gray-600 hover:text-gray-300',
         saveBtn: 'text-gray-500 hover:text-gray-300 bg-white/5 hover:bg-white/10 border-white/10',
         saveInput: 'border-white/15 bg-white/5',
-        customTag: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300',
-        customTagActive: 'bg-emerald-500/25 text-emerald-300 border-emerald-400/50',
+        customTag: 'bg-white/5 text-gray-500 border-white/8 hover:bg-white/10 hover:text-gray-300',
+        customTagActive: 'bg-white/15 text-white border-white/25',
       }
     : {
         emptyText: 'text-gray-500',
@@ -275,8 +275,8 @@ function CompanyList({
         chipClear: 'text-gray-400 hover:text-gray-600',
         saveBtn: 'text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border-gray-200',
         saveInput: 'border-violet-300 bg-gray-50',
-        customTag: 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800',
-        customTagActive: 'bg-emerald-100 text-emerald-800 border-emerald-400',
+        customTag: 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700',
+        customTagActive: 'bg-violet-50 text-violet-700 border-violet-300',
       }
 
   if (companies.length === 0) {
@@ -561,11 +561,11 @@ function CompanyList({
           {orgQuickFilters.length > 0 && (
             <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
               <div className="flex items-center justify-between mb-0.5">
-                <div className={`text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-amber-500/70' : 'text-amber-600/70'}`}>Organization</div>
+                <div className={`text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Organization</div>
                 {(orgRole === 'owner' || orgRole === 'admin') && (
                   <a
                     href="/org#settings"
-                    className={`text-[10px] font-medium ${isDark ? 'text-amber-400/60 hover:text-amber-400' : 'text-amber-600/60 hover:text-amber-600'}`}
+                    className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     Manage
                   </a>
@@ -603,13 +603,13 @@ function CompanyList({
           {canExportPremium(userTier) && (
             <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
               <div className="flex items-center justify-between mb-0.5">
-                <div className={`text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-emerald-500/70' : 'text-emerald-600/70'}`}>Custom</div>
+                <div className={`text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Custom</div>
                 <button
                   onClick={() => {
                     setCustomLabelForm(!customLabelForm)
                     if (!customLabelForm && columns.length > 0) setNewLabelColumn(columns[0])
                   }}
-                  className={`text-[10px] font-medium ${isDark ? 'text-emerald-400/60 hover:text-emerald-400' : 'text-emerald-600/60 hover:text-emerald-600'}`}
+                  className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   {customLabelForm ? 'Cancel' : '+ New'}
                 </button>
@@ -717,7 +717,7 @@ function CompanyList({
                       setCustomLabelForm(false)
                     }}
                     className={`text-[10px] font-semibold py-1 px-3 rounded-lg transition-all disabled:opacity-40 ${
-                      isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      isDark ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
                     Create label

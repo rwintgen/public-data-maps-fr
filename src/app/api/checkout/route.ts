@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: {
+      trial_period_days: 7,
       metadata: { firebaseUid: uid },
     },
     success_url: `${origin}/?checkout=success`,

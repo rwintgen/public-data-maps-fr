@@ -28,7 +28,10 @@ export async function POST(req: NextRequest) {
   }
 
   const org = await getOrg(orgId)
-  const customerId = org?.stripeCustomerId
+  let customerId = org?.stripeCustomerId
+  if (!customerId) {
+    customerId = profile.data()?.stripeCustomerId
+  }
   if (!customerId) {
     return NextResponse.json({ error: 'No billing account found' }, { status: 404 })
   }

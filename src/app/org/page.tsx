@@ -44,6 +44,10 @@ interface OrgData {
   domain: string | null
   ownerId: string
   seatCount: number
+  billingInterval: 'monthly' | 'yearly' | null
+  seatPrice: number | null
+  subscriptionStatus: string | null
+  subscriptionEndDate: string | null
   settings: { defaultPresets: string[]; defaultResultLimit: number | null; customQuickFilters?: { id: string; label: string; column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[] }
 }
 
@@ -105,6 +109,8 @@ export default function OrgDashboard() {
   const [settingsSaving, setSettingsSaving] = useState(false)
 
   const [inviteSeatConfirm, setInviteSeatConfirm] = useState(false)
+  const [showBillingModal, setShowBillingModal] = useState(false)
+  const [billingPortalUrl, setBillingPortalUrl] = useState<string | null>(null)
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesLoading, setInvoicesLoading] = useState(false)
@@ -147,6 +153,8 @@ export default function OrgDashboard() {
 
   const [transferTarget, setTransferTarget] = useState<{ uid: string; name: string } | null>(null)
   const [deleteConnector, setDeleteConnector] = useState<{ id: string; name: string } | null>(null)
+  const [showDissolve, setShowDissolve] = useState(false)
+  const [dissolving, setDissolving] = useState(false)
 
   const [orgFilters, setOrgFilters] = useState<{ id: string; label: string; column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[]>([])
   const [orgFilterForm, setOrgFilterForm] = useState(false)
@@ -421,7 +429,8 @@ export default function OrgDashboard() {
       })
       const data = await res.json()
       if (data.url) {
-        window.location.href = data.url
+        setBillingPortalUrl(data.url)
+        setShowBillingModal(true)
       } else if (res.status === 404) {
         setBillingError('Your plan was activated via a promotional code. There is no Stripe subscription to manage.')
       } else {
@@ -1286,7 +1295,7 @@ export default function OrgDashboard() {
                       {orgFilters.map((f) => (
                         <div key={f.id} className={`flex items-center justify-between rounded-lg border px-3 py-1.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50 border-gray-200'}`}>
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className={`text-[11px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>{f.label}</span>
+                            <span className={`text-[11px] font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{f.label}</span>
                             <span className={`text-[10px] ${t.muted}`}>
                               {f.negate ? 'NOT ' : ''}{f.column.length > 20 ? f.column.substring(0, 20) + '…' : f.column} {f.operator}{f.operator !== 'empty' ? ` "${f.value}"` : ''}
                             </span>
@@ -1325,7 +1334,7 @@ export default function OrgDashboard() {
                           onClick={() => setOfNegate(!ofNegate)}
                           className={`text-[10px] font-bold rounded px-2 py-0.5 border transition-colors ${
                             ofNegate
-                              ? 'text-orange-400 border-orange-500/50 bg-orange-500/10'
+                              ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
                               : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
                           }`}
                         >
@@ -1362,7 +1371,7 @@ export default function OrgDashboard() {
                             setOrgFilterForm(false)
                           }}
                           className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                            isDark ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                            isDark ? 'bg-white/10 text-gray-200 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
                           {orgFiltersSaving ? 'Saving…' : 'Add quick filter'}
@@ -1415,15 +1424,16 @@ export default function OrgDashboard() {
                   </div>
 
                   <div className={`border-t pt-4 space-y-2 ${isDark ? 'border-red-500/20' : 'border-red-200'}`}>
-                    <p className={`text-[11px] font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Delete organization</p>
+                    <p className={`text-[11px] font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Dissolve organization</p>
                     <p className={`text-[11px] ${t.muted}`}>
-                      Deleting an organization is permanent and cannot be undone. All members, connectors, saved searches, and billing data will be removed.
+                      Permanently dissolve this organization. All members will be removed, the Stripe subscription will be cancelled, and the organization will be archived. This cannot be undone.
                     </p>
                     <button
-                      onClick={() => navigateToSection('support')}
-                      className={`text-[11px] font-medium px-4 py-1.5 rounded-lg border transition-colors ${isDark ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' : 'border-red-200 text-red-600 hover:bg-red-100'}`}
+                      onClick={() => setShowDissolve(true)}
+                      disabled={dissolving}
+                      className={`text-[11px] font-medium px-4 py-1.5 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' : 'border-red-200 text-red-600 hover:bg-red-100'}`}
                     >
-                      Contact support to delete organization
+                      {dissolving ? 'Dissolving…' : 'Dissolve organization'}
                     </button>
                   </div>
                 </div>
@@ -1434,6 +1444,56 @@ export default function OrgDashboard() {
           {section === 'billing' && isOwner && (
             <div className="space-y-4 max-w-2xl">
               <h2 className={`text-lg font-semibold ${t.title}`}>Billing</h2>
+
+              {org?.subscriptionStatus === 'past_due' && (
+                <div className={`rounded-xl border p-4 ${isDark ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+                  <div className="flex items-start gap-3">
+                    <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isDark ? 'text-red-400' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                    <div>
+                      <p className={`text-[12px] font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>Payment failed</p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-red-400/80' : 'text-red-600'}`}>
+                        Your last payment failed. Please update your payment method to avoid service interruption.
+                      </p>
+                      <button
+                        onClick={handleBilling}
+                        className={`text-[11px] font-medium mt-2 px-3 py-1 rounded-lg transition-colors ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                      >
+                        Update payment method →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {org?.subscriptionStatus === 'canceled' && (
+                <div className={`rounded-xl border p-4 ${isDark ? 'border-yellow-500/20 bg-yellow-500/5' : 'border-yellow-200 bg-yellow-50'}`}>
+                  <div className="flex items-start gap-3">
+                    <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isDark ? 'text-yellow-400' : 'text-yellow-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div>
+                      <p className={`text-[12px] font-semibold ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>Subscription cancelled</p>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-yellow-400/80' : 'text-yellow-600'}`}>
+                        Your subscription has been cancelled.{org.subscriptionEndDate ? ` You have access until ${new Date(org.subscriptionEndDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.` : ''} All your data has been preserved.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Estimated cost card */}
+              {org?.seatPrice && (
+                <div className={`rounded-xl border p-4 ${t.card}`}>
+                  <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>
+                    Estimated {org.billingInterval === 'yearly' ? 'yearly' : 'monthly'} cost
+                  </p>
+                  <p className={`text-2xl font-bold mt-1 ${t.title}`}>
+                    ${(org.seatPrice * members.length).toFixed(2)}
+                  </p>
+                  <p className={`text-[11px] mt-1.5 ${t.muted}`}>
+                    Each purchased seat is ${org.seatPrice.toFixed(2)} USD/{org.billingInterval === 'yearly' ? 'year' : 'month'}.
+                    {' '}<button onClick={handleBilling} className={`font-medium underline ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>Review billing details</button>.
+                  </p>
+                </div>
+              )}
 
               <div className={`rounded-xl border p-4 space-y-4 ${t.card}`}>
                 <div className="flex items-center justify-between">
@@ -1811,14 +1871,77 @@ export default function OrgDashboard() {
         />
       )}
 
-      {inviteSeatConfirm && (
+      {inviteSeatConfirm && (() => {
+        const price = org?.seatPrice ?? (org?.billingInterval === 'yearly' ? 12 : 15)
+        const interval = org?.billingInterval ?? 'monthly'
+        const currentSeats = members.length
+        const newTotal = currentSeats + 1
+        const totalCost = price * newTotal
+        return (
+          <ConfirmModal
+            isDark={isDark}
+            title="Confirm seats purchase"
+            message={
+              <div className="space-y-4">
+                <div>
+                  <p className={`text-[10px] uppercase tracking-widest font-semibold mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Your next payment</p>
+                  <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>${totalCost.toFixed(2)} <span className={`text-sm font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>per {interval === 'yearly' ? 'year' : 'month'}</span></p>
+                  <p className={`text-[11px] mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    You will not be charged twice for members who have already been assigned seats or for members belonging to multiple teams.
+                  </p>
+                </div>
+                <div className={`border-t pt-3 space-y-2 ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[12px] font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Cost per seat</span>
+                    <span className={`text-[12px] font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[12px] font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Total assigned seats</span>
+                    <span className={`text-[12px] font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{newTotal} <span className={`font-normal ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({currentSeats} existing 1 new)</span></span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[12px] font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Your next charge</span>
+                    <span className={`text-[12px] font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>${totalCost.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            }
+            confirmLabel="Purchase seats"
+            cancelLabel="Back"
+            onConfirm={() => { setInviteSeatConfirm(false); handleInvite() }}
+            onCancel={() => setInviteSeatConfirm(false)}
+          />
+        )
+      })()}
+
+      {showBillingModal && billingPortalUrl && (
         <ConfirmModal
           isDark={isDark}
-          title="Confirm seat purchase"
-          message={<>Inviting <strong className={isDark ? 'text-white' : 'text-gray-900'}>{inviteEmail}</strong> will add a new seat when accepted.<br /><br />Cost: <strong className={isDark ? 'text-white' : 'text-gray-900'}>$15/mo</strong> (or <strong className={isDark ? 'text-white' : 'text-gray-900'}>$12/mo</strong> on yearly billing), prorated for the current period.<br /><br />Current seats: <strong className={isDark ? 'text-white' : 'text-gray-900'}>{members.length}</strong> → Total after acceptance: <strong className={isDark ? 'text-white' : 'text-gray-900'}>{members.length + 1}</strong></>}
-          confirmLabel="Send invitation"
-          onConfirm={() => { setInviteSeatConfirm(false); handleInvite() }}
-          onCancel={() => setInviteSeatConfirm(false)}
+          title="Manage your subscription"
+          message={
+            <div className="space-y-3">
+              <p>You will be redirected to our billing partner (Stripe) where you can:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>Update your payment method</li>
+                <li>Change your billing details</li>
+                <li>View past invoices</li>
+                <li>Cancel your subscription</li>
+              </ul>
+              <div className={`rounded-lg p-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                <p className={`text-[11px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>If you cancel:</p>
+                <ul className={`text-[11px] mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <li>• Access continues until the end of the billing period</li>
+                  <li>• All organization data, searches, and quick filters are preserved</li>
+                  <li>• Members will lose access to premium features</li>
+                  <li>• You can resubscribe at any time</li>
+                </ul>
+              </div>
+            </div>
+          }
+          confirmLabel="Open billing portal →"
+          cancelLabel="Go back"
+          onConfirm={() => { setShowBillingModal(false); window.location.href = billingPortalUrl }}
+          onCancel={() => setShowBillingModal(false)}
         />
       )}
 
@@ -1843,6 +1966,49 @@ export default function OrgDashboard() {
             } catch {}
           }}
           onCancel={() => setDeleteConnector(null)}
+        />
+      )}
+
+      {showDissolve && (
+        <ConfirmModal
+          isDark={isDark}
+          title="Dissolve organization"
+          message={
+            <div className="space-y-3">
+              <p>This will permanently dissolve <strong>{org?.name}</strong>. This action cannot be undone.</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>All {members.length} member{members.length !== 1 ? 's' : ''} will be removed</li>
+                <li>The Stripe subscription will be cancelled immediately</li>
+                <li>All connectors and saved data will be archived</li>
+                <li>You and all members will be downgraded to the free plan</li>
+              </ul>
+            </div>
+          }
+          confirmLabel={dissolving ? 'Dissolving…' : 'Dissolve organization'}
+          danger
+          onConfirm={async () => {
+            setDissolving(true)
+            try {
+              const token = await user!.getIdToken()
+              const res = await fetch('/api/org/dissolve', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (res.ok) {
+                window.location.href = '/'
+              } else {
+                const data = await res.json()
+                setError(data.error ?? 'Failed to dissolve organization')
+                setShowDissolve(false)
+                setDissolving(false)
+              }
+            } catch {
+              setError('Failed to dissolve organization')
+              setShowDissolve(false)
+              setDissolving(false)
+            }
+          }}
+          onCancel={() => setShowDissolve(false)}
         />
       )}
     </div>

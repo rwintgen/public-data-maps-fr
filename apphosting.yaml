@@ -61,6 +61,11 @@ env:
     availability:
       - RUNTIME
 
+  - variable: RESEND_FROM_EMAIL
+    value: "Public Data Maps <noreply@publicdatamaps.com>"
+    availability:
+      - RUNTIME
+
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
     availability:

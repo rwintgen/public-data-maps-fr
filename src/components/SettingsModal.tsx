@@ -58,6 +58,7 @@ interface SettingsModalProps {
   orgRole: 'owner' | 'admin' | 'member' | null
   orgName: string | null
   orgIconUrl: string | null
+  subscriptionStatus: string | null
 }
 
 export default function SettingsModal({
@@ -97,6 +98,7 @@ export default function SettingsModal({
   orgRole,
   orgName,
   orgIconUrl,
+  subscriptionStatus,
 }: SettingsModalProps) {
   const [settingsOpen, setSettingsOpen] = useState(() => {
     try { return localStorage.getItem('pdm_section_settings') !== '0' } catch { return true }
@@ -314,6 +316,19 @@ export default function SettingsModal({
                   ))}
                 </div>
               </div>
+
+              {user && subscriptionStatus === 'past_due' && userTier !== 'enterprise' && (
+                <div className={`rounded-lg border p-2.5 ${isDark ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
+                  <p className={`text-[11px] font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Payment failed</p>
+                  <p className={`text-[10px] mt-0.5 ${isDark ? 'text-red-400/80' : 'text-red-600'}`}>Update your payment method to avoid losing access.</p>
+                  <button
+                    onClick={() => { onManagePlan(); handleClose() }}
+                    className={`text-[10px] font-medium mt-1.5 px-2.5 py-1 rounded-lg transition-colors ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                  >
+                    Update payment method →
+                  </button>
+                </div>
+              )}
 
               {user && userTier !== 'enterprise' && (
                 <div>

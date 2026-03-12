@@ -383,3 +383,4 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [ ] Mobile-responsive layout
 - [ ] Create landing page
 - [x] Add AI overview
+- [x] Set up custom domain (publicdatamaps.com) with Firebase App Hosting, Resend, and Stripe

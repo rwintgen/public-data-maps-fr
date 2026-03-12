@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin'
-import { getMember } from '@/lib/org'
+import { getMember, getOrg, decrementOrgSeats } from '@/lib/org'
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
@@ -37,6 +37,15 @@ export async function POST(req: NextRequest) {
     orgName: null,
   })
   await batch.commit()
+
+  const org = await getOrg(orgId)
+  if (org?.stripeSubscriptionId) {
+    try {
+      await decrementOrgSeats(org.stripeSubscriptionId, orgId)
+    } catch (err) {
+      console.error('[leave] Failed to decrement Stripe seats:', err)
+    }
+  }
 
   return NextResponse.json({ ok: true })
 }

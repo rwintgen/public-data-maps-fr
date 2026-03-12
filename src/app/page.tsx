@@ -11,7 +11,7 @@ import ColumnConfig from '@/components/ColumnConfig'
 import Paywall from '@/components/Paywall'
 import AIOverview from '@/components/AIOverview'
 import SettingsModal from '@/components/SettingsModal'
-import { Modal, CloseButton, PresetPill, CardSection, SectionTitle } from '@/components/ui'
+import { Modal, CloseButton, PresetPill, CardSection, SectionTitle, ConfirmModal } from '@/components/ui'
 import { applyPresets, PRESET_FILTERS, PRESET_GROUPS, type CustomPreset } from '@/lib/presets'
 import {
   type UserTier,
@@ -65,6 +65,8 @@ export default function Home() {
   const searchAbort = useRef<AbortController | null>(null)
   const [prefsSaved, setPrefsSaved] = useState(false)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [showPortalModal, setShowPortalModal] = useState(false)
+  const [portalUrl, setPortalUrl] = useState<string | null>(null)
   const [usageOpen, setUsageOpen] = useState(() => {
     try { return localStorage.getItem('pdm_usage_open') === '1' } catch { return false }
   })
@@ -78,6 +80,7 @@ export default function Home() {
   const [aiOverviewCount, setAIOverviewCount] = useState(0)
   const [aiOverviewsList, setAIOverviewsList] = useState<{ siret: string; companyName: string; city: string; createdAt: string }[]>([])
   const [userTier, setUserTier] = useState<UserTier>('free')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [discountInfo, setDiscountInfo] = useState<{ code: string; plan: string; expiresAt: string } | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
   const [orgRole, setOrgRole] = useState<'owner' | 'admin' | 'member' | null>(null)
@@ -176,6 +179,7 @@ export default function Home() {
       }
       if (data?.aiOverviews) setAIOverviewsList(data.aiOverviews)
       if (data?.tier) setUserTier(data.tier as UserTier)
+      setSubscriptionStatus(data?.subscriptionStatus ?? null)
       setDiscountInfo(data?.discount ?? null)
       if (data?.org) {
         setOrgId(data.org.orgId ?? null)
@@ -723,7 +727,10 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
+      if (data.url) {
+        setPortalUrl(data.url)
+        setShowPortalModal(true)
+      }
     } catch {}
   }, [user, discountInfo])
 
@@ -1085,12 +1092,12 @@ export default function Home() {
                     </span>
                   ))}
                   {activeCustom.map((cp) => (
-                    <span key={cp.id} className={`text-[10px] font-medium px-1.5 py-0 rounded-full border ${isDark ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/50' : 'bg-emerald-600 border-emerald-600 text-white'}`}>
+                    <span key={cp.id} className={`text-[10px] font-medium px-1.5 py-0 rounded-full border ${isDark ? 'bg-white/15 text-white border-white/25' : 'bg-violet-50 text-violet-700 border-violet-300'}`}>
                       {cp.label}
                     </span>
                   ))}
                   {activeOrg.map((oq) => (
-                    <span key={oq.id} className={`text-[10px] font-medium px-1.5 py-0 rounded-full border ${isDark ? 'bg-amber-500/25 text-amber-300 border-amber-400/50' : 'bg-amber-500 border-amber-500 text-white'}`}>
+                    <span key={oq.id} className={`text-[10px] font-medium px-1.5 py-0 rounded-full border ${isDark ? 'bg-white/15 text-white border-white/25' : 'bg-violet-50 text-violet-700 border-violet-300'}`}>
                       {oq.label}
                     </span>
                   ))}
@@ -1189,11 +1196,11 @@ export default function Home() {
                   {orgQuickFilters.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
                       <div className="flex items-center justify-between mb-0.5">
-                        <SectionTitle isDark={isDark} className={isDark ? '!text-amber-500/70' : '!text-amber-600/70'}>Organization</SectionTitle>
+                        <SectionTitle isDark={isDark}>Organization</SectionTitle>
                         {(orgRole === 'owner' || orgRole === 'admin') && (
                           <a
                             href="/org#settings"
-                            className={`text-[10px] font-medium ${isDark ? 'text-amber-400/60 hover:text-amber-400' : 'text-amber-600/60 hover:text-amber-600'}`}
+                            className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                           >
                             Manage
                           </a>
@@ -1222,14 +1229,14 @@ export default function Home() {
                   )}
                   <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
                     <div className="flex items-center justify-between mb-0.5">
-                      <SectionTitle isDark={isDark} className={isDark ? '!text-emerald-500/70' : '!text-emerald-600/70'}>Custom</SectionTitle>
+                      <SectionTitle isDark={isDark}>Custom</SectionTitle>
                       {!locked && (
                         <button
                           onClick={() => {
                             setPqCustomForm(!pqCustomForm)
                             if (!pqCustomForm && activeFilterColumns.length > 0) setPqCustomColumn(activeFilterColumns[0])
                           }}
-                          className={`text-[10px] font-medium ${isDark ? 'text-emerald-400/60 hover:text-emerald-400' : 'text-emerald-600/60 hover:text-emerald-600'}`}
+                          className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                           {pqCustomForm ? 'Cancel' : '+ New'}
                         </button>
@@ -1289,7 +1296,7 @@ export default function Home() {
                             onClick={() => setPqCustomNegate(!pqCustomNegate)}
                             className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors ${
                               pqCustomNegate
-                                ? 'text-orange-400 border-orange-500/50 bg-orange-500/10'
+                                ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
                                 : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
                             }`}
                           >
@@ -1332,7 +1339,7 @@ export default function Home() {
                             setPqCustomForm(false)
                           }}
                           className={`text-[10px] font-semibold py-1 px-3 rounded-lg transition-all disabled:opacity-40 ${
-                            isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            isDark ? 'bg-white/10 text-gray-200 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
                           Create quick filter
@@ -1369,7 +1376,7 @@ export default function Home() {
                         onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, negate: !x.negate } : x))}
                         className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           f.negate
-                            ? 'text-orange-400 border-orange-500/50 bg-orange-500/10'
+                            ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
                             : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
                         }`}
                       >
@@ -1601,6 +1608,7 @@ export default function Home() {
         popupColumns={popupColumns}
         onFieldsModal={setFieldsModalTab}
         onManagePlan={handleManagePlan}
+        subscriptionStatus={subscriptionStatus}
         onPaywall={setPaywallFeature}
         onDeleteAccount={handleDeleteAccount}
         onSignOut={handleSignOut}
@@ -1755,6 +1763,36 @@ export default function Home() {
           initialTab={fieldsModalTab}
           onClose={() => setFieldsModalTab(null)}
         />
+    )}
+
+    {showPortalModal && portalUrl && (
+      <ConfirmModal
+        isDark={isDark}
+        title="Manage your subscription"
+        message={
+          <div className="space-y-3">
+            <p>You will be redirected to our billing partner (Stripe) where you can:</p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Update your payment method</li>
+              <li>Change your billing details</li>
+              <li>View past invoices</li>
+              <li>Cancel your subscription</li>
+            </ul>
+            <div className={`rounded-lg p-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+              <p className={`text-[11px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>If you cancel:</p>
+              <ul className={`text-[11px] mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                <li>• Access continues until the end of the billing period</li>
+                <li>• All your data and saved searches are preserved</li>
+                <li>• You can resubscribe at any time</li>
+              </ul>
+            </div>
+          </div>
+        }
+        confirmLabel="Open billing portal →"
+        cancelLabel="Go back"
+        onConfirm={() => { setShowPortalModal(false); window.location.href = portalUrl }}
+        onCancel={() => setShowPortalModal(false)}
+      />
     )}
     </>
   )

@@ -52,7 +52,13 @@ export async function POST(req: NextRequest) {
 
         if (tier === 'enterprise') {
           const profile = await db.collection('userProfiles').doc(uid).get()
-          if (!profile.data()?.orgId) {
+          const existingOrgId = profile.data()?.orgId
+          if (existingOrgId) {
+            await db.collection('organizations').doc(existingOrgId).set({
+              stripeCustomerId: session.customer,
+              stripeSubscriptionId: subscriptionId,
+            }, { merge: true })
+          } else {
             try {
               const authUser = await getAdminAuth().getUser(uid)
               const orgId = await createOrg(
@@ -64,6 +70,9 @@ export async function POST(req: NextRequest) {
                 1,
                 subscriptionId,
               )
+              await db.collection('organizations').doc(orgId).set({
+                stripeCustomerId: session.customer,
+              }, { merge: true })
               console.log(`[stripe-webhook] auto-provisioned org=${orgId} for uid=${uid}`)
             } catch (err) {
               console.error('[stripe-webhook] failed to auto-provision org:', err)
@@ -94,7 +103,10 @@ export async function POST(req: NextRequest) {
         const profile = await db.collection('userProfiles').doc(uid).get()
         const orgId = profile.data()?.orgId
         if (orgId) {
-          await db.collection('organizations').doc(orgId).update({ seatCount: quantity })
+          await db.collection('organizations').doc(orgId).update({
+            seatCount: quantity,
+            subscriptionStatus: sub.status,
+          })
         }
       }
 
@@ -107,12 +119,51 @@ export async function POST(req: NextRequest) {
       const uid = sub.metadata?.firebaseUid ?? await uidFromCustomer(db, sub.customer as string)
       if (!uid) break
 
+      const periodEnd = sub.items.data[0]?.current_period_end
+      const endDate = periodEnd
+        ? new Date(periodEnd * 1000).toISOString()
+        : null
+
       await db.collection('userProfiles').doc(uid).set({
         tier: 'free',
         subscriptionStatus: 'canceled',
+        subscriptionEndDate: endDate,
       }, { merge: true })
 
-      console.log(`[stripe-webhook] subscription.deleted → uid=${uid} downgraded to free`)
+      const profile = await db.collection('userProfiles').doc(uid).get()
+      const orgId = profile.data()?.orgId
+      if (orgId) {
+        await db.collection('organizations').doc(orgId).update({
+          subscriptionStatus: 'canceled',
+          subscriptionEndDate: endDate,
+        })
+      }
+
+      console.log(`[stripe-webhook] subscription.deleted → uid=${uid} downgraded to free, ends=${endDate}`)
+      break
+    }
+
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object as Stripe.Invoice
+      const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+      if (!customerId) break
+
+      const uid = await uidFromCustomer(db, customerId)
+      if (!uid) break
+
+      await db.collection('userProfiles').doc(uid).set({
+        subscriptionStatus: 'past_due',
+      }, { merge: true })
+
+      const profile = await db.collection('userProfiles').doc(uid).get()
+      const orgId = profile.data()?.orgId
+      if (orgId) {
+        await db.collection('organizations').doc(orgId).update({
+          subscriptionStatus: 'past_due',
+        })
+      }
+
+      console.log(`[stripe-webhook] invoice.payment_failed → uid=${uid} set to past_due`)
       break
     }
   }
