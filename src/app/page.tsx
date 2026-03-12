@@ -1532,9 +1532,16 @@ export default function Home() {
 
         {/* Footer */}
         <div className={`flex-shrink-0 px-5 py-3 border-t flex items-center ${d.footer}`}>
-          <p className={`text-[10px] flex-1 ${d.footerText}`}>
-            Data source: SIRENE (INSEE) &middot; Open Data
-          </p>
+          <div className="flex-1 flex flex-col gap-0.5">
+            <p className={`text-[10px] ${d.footerText}`}>
+              Data source: SIRENE (INSEE) &middot; Open Data
+            </p>
+            <p className={`text-[10px] ${d.footerText}`}>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline opacity-60 hover:opacity-100 transition-opacity">Privacy</a>
+              <span className="opacity-40 mx-1">&middot;</span>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline opacity-60 hover:opacity-100 transition-opacity">Terms</a>
+            </p>
+          </div>
           <button
             onClick={() => { if (!user) { setAuthOpen(true) } else { setExportOpen(true) } }}
             disabled={companies.length === 0}
