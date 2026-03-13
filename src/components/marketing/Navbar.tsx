@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/lib/firebase'
+import AuthModal from '@/components/AuthModal'
 import { useLocale, type Locale } from '@/lib/i18n'
 import { translations } from '@/lib/translations'
 
@@ -79,6 +80,9 @@ export default function Navbar() {
   const t = translations[locale]
   const [user] = useAuthState(auth)
   const isSignedIn = !!user
+  const [authOpen, setAuthOpen] = useState(false)
+  const isSigningIn = useRef(false)
+  const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)
 
   useEffect(() => {
     const stored = localStorage.getItem('site-theme') as Theme | null
@@ -142,17 +146,30 @@ export default function Navbar() {
           <LocaleToggle locale={locale} setLocale={setLocale} />
           <ThemeToggle theme={theme} setTheme={setTheme} />
           {isSignedIn ? (
-            <Link
-              href="/app"
-              className="text-[13px] font-medium px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
-            >
-              {t.nav.goToApp}
-            </Link>
+            <>
+              <Link href="/app" className="flex items-center">
+                {user?.photoURL ? (
+                  <Image src={user.photoURL} alt="" width={28} height={28} className="rounded-full" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z" />
+                    </svg>
+                  </div>
+                )}
+              </Link>
+              <Link
+                href="/app"
+                className="text-[13px] font-medium px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+              >
+                {t.nav.goToApp}
+              </Link>
+            </>
           ) : (
             <>
-              <Link href="/app" className="text-[13px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <button onClick={() => setAuthOpen(true)} className="text-[13px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {t.nav.signIn}
-              </Link>
+              </button>
               <Link
                 href="/app"
                 className="text-[13px] font-medium px-4 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
@@ -204,17 +221,30 @@ export default function Navbar() {
             </div>
             <div className="flex items-center gap-3">
               {isSignedIn ? (
-                <Link
-                  href="/app"
-                  className="text-[14px] font-medium px-4 py-2.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
-                >
-                  {t.nav.goToApp}
-                </Link>
+                <>
+                  <Link href="/app" className="flex items-center">
+                    {user?.photoURL ? (
+                      <Image src={user.photoURL} alt="" width={28} height={28} className="rounded-full" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z" />
+                        </svg>
+                      </div>
+                    )}
+                  </Link>
+                  <Link
+                    href="/app"
+                    className="text-[14px] font-medium px-4 py-2.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+                  >
+                    {t.nav.goToApp}
+                  </Link>
+                </>
               ) : (
                 <>
-                  <Link href="/app" className="text-[14px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors py-2">
+                  <button onClick={() => { setAuthOpen(true); setMobileOpen(false) }} className="text-[14px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors py-2">
                     {t.nav.signIn}
-                  </Link>
+                  </button>
                   <Link
                     href="/app"
                     className="text-[14px] font-medium px-4 py-2.5 rounded-lg bg-violet-600 text-white hover:bg-violet-500 transition-colors"
@@ -226,6 +256,14 @@ export default function Navbar() {
             </div>
           </div>
         </div>
+      )}
+
+      {authOpen && (
+        <AuthModal
+          isDark={isDark}
+          onClose={() => setAuthOpen(false)}
+          isSigningIn={isSigningIn}
+        />
       )}
     </header>
   )
