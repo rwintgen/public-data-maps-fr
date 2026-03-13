@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, memo } from 'react'
 import { PRESET_FILTERS, PRESET_GROUPS, applyPresets, type CustomPreset } from '@/lib/presets'
-import { canExportPremium, canUsePresets, type UserTier } from '@/lib/usage'
+import { canExportPremium, type UserTier } from '@/lib/usage'
 import { PresetPill, CardSection, SectionTitle } from '@/components/ui'
 
 interface Filter {
@@ -341,7 +341,7 @@ function CompanyList({
           </div>
           <div className="relative">
             <button
-              onClick={() => canUsePresets(userTier) ? setShowPresets(!showPresets) : onPaywall('pre-search filters')}
+              onClick={() => setShowPresets(!showPresets)}
               className={`w-7 h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showPresets ? t.toolbarActive : t.toolbarBtn}`}
               data-tooltip="Quick filters" data-tooltip-pos="left"
             >
