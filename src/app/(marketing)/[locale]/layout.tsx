@@ -1,5 +1,7 @@
 import { LocaleProvider, type Locale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
+import Navbar from '@/components/marketing/Navbar'
+import Footer from '@/components/marketing/Footer'
 
 const LOCALES: Locale[] = ['en', 'fr']
 
@@ -22,7 +24,11 @@ export default function LocaleLayout({ children, params }: Props) {
   return (
     <LocaleProvider locale={params.locale as Locale}>
       <HtmlLang locale={params.locale} />
-      {children}
+      <div className="flex flex-col min-h-full">
+        <Navbar />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
     </LocaleProvider>
   )
 }
