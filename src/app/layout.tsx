@@ -20,8 +20,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className={`${inter.className} h-full bg-gray-950 text-gray-100`}>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('site-theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}})()` }} />
+      </head>
+      <body className={`${inter.className} h-full bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
         {children}
       </body>
     </html>

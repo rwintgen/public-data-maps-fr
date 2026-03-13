@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
       trial_period_days: 7,
       metadata: { firebaseUid: uid },
     },
-    success_url: `${origin}/?checkout=success`,
-    cancel_url: `${origin}/?checkout=cancelled`,
+    success_url: `${origin}/app?checkout=success`,
+    cancel_url: `${origin}/app?checkout=cancelled`,
     metadata: { firebaseUid: uid },
   })
 

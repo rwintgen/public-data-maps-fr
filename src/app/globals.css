@@ -3,8 +3,15 @@
 @tailwind utilities;
 
 html, body {
-  overflow: hidden;
   height: 100%;
+}
+
+/* Lock scroll on full-screen app pages (map/org). Marketing pages scroll normally. */
+html:has(body.app-shell) {
+  overflow: hidden;
+}
+body.app-shell {
+  overflow: hidden;
 }
 
 /* === Leaflet popup: dark theme (default) === */
@@ -66,6 +73,62 @@ html, body {
 /* === Scrollbar-none utility (horizontal chip bars) === */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* === Hero text shimmer === */
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.text-shimmer {
+  background: linear-gradient(
+    110deg,
+    currentColor 35%,
+    rgba(167, 139, 250, 0.9) 50%,
+    currentColor 65%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+[data-theme="dark"] .text-shimmer {
+  background: linear-gradient(
+    110deg,
+    #a78bfa 35%,
+    #e9d5ff 50%,
+    #a78bfa 65%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+[data-theme="light"] .text-shimmer {
+  background: linear-gradient(
+    110deg,
+    #7c3aed 35%,
+    #c4b5fd 50%,
+    #7c3aed 65%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+/* === Outline text (stroke only, no fill) === */
+.text-outline-purple {
+  -webkit-text-stroke: 1.5px #7c3aed;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  paint-order: stroke fill;
+}
+[data-theme="dark"] .text-outline-purple {
+  -webkit-text-stroke: 1.5px #a78bfa;
+}
 
 /* === Preferences saved fade in/out === */
 @keyframes prefs-saved {

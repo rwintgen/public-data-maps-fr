@@ -620,7 +620,7 @@ export default function OrgDashboard() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
         </svg>
         <p className={`text-sm font-medium ${t.title}`}>{inviteInfoError}</p>
-        <a href="/" className={`text-sm font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-violet-600 hover:text-violet-700'} transition-colors`}>← Back to map</a>
+        <a href="/app" className={`text-sm font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-violet-600 hover:text-violet-700'} transition-colors`}>← Back to map</a>
       </div>
     )
   }
@@ -792,7 +792,7 @@ export default function OrgDashboard() {
             Continue with Google
           </button>
 
-          <a href="/" className={`block text-center text-[11px] font-medium transition-colors ${t.backBtn}`}>← Back to map</a>
+          <a href="/app" className={`block text-center text-[11px] font-medium transition-colors ${t.backBtn}`}>← Back to map</a>
         </div>
       </div>
     )
@@ -802,7 +802,7 @@ export default function OrgDashboard() {
     return (
       <div className={`h-screen flex flex-col items-center justify-center gap-4 ${t.bg}`}>
         <p className={`text-sm ${t.subtitle}`}>{error || 'Organization not found'}</p>
-        <a href="/" className={`text-sm font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-violet-600 hover:text-violet-700'} transition-colors`}>← Back to map</a>
+        <a href="/app" className={`text-sm font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-violet-600 hover:text-violet-700'} transition-colors`}>← Back to map</a>
       </div>
     )
   }
@@ -842,7 +842,7 @@ export default function OrgDashboard() {
             {createLoading ? 'Creating…' : 'Create organization'}
           </button>
 
-          <a href="/" className={`block text-center text-[11px] font-medium transition-colors ${t.backBtn}`}>← Back to map</a>
+          <a href="/app" className={`block text-center text-[11px] font-medium transition-colors ${t.backBtn}`}>← Back to map</a>
         </div>
       </div>
     )
@@ -852,7 +852,7 @@ export default function OrgDashboard() {
     return (
       <div className={`h-screen flex flex-col items-center justify-center gap-4 ${t.bg}`}>
         <p className={`text-sm ${t.subtitle}`}>Organization management requires an Enterprise plan.</p>
-        <a href="/" className={`text-sm font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-violet-600 hover:text-violet-700'} transition-colors`}>← Back to map</a>
+        <a href="/app" className={`text-sm font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-violet-600 hover:text-violet-700'} transition-colors`}>← Back to map</a>
       </div>
     )
   }
@@ -892,7 +892,7 @@ export default function OrgDashboard() {
     <div className={`h-screen flex flex-col ${t.bg}`}>
       {/* Top bar */}
       <header className={`flex items-center justify-between px-6 py-3 border-b ${t.border} ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
-        <a href="/" className={`flex items-center gap-2 text-sm font-medium transition-colors ${t.backBtn}`}>
+        <a href="/app" className={`flex items-center gap-2 text-sm font-medium transition-colors ${t.backBtn}`}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -1995,7 +1995,7 @@ export default function OrgDashboard() {
                 headers: { Authorization: `Bearer ${token}` },
               })
               if (res.ok) {
-                window.location.href = '/'
+                window.location.href = '/app'
               } else {
                 const data = await res.json()
                 setError(data.error ?? 'Failed to dissolve organization')

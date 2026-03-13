@@ -6,8 +6,8 @@ export const metadata: Metadata = {
 
 export default function TermsOfService() {
   return (
-    <div className="h-full overflow-y-auto bg-white text-gray-900">
-      <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="bg-white text-gray-900">
+      <div className="mx-auto max-w-3xl px-6 pt-28 pb-16">
         <h1 className="text-3xl font-bold tracking-tight">Terms of Service</h1>
         <p className="mt-2 text-sm text-gray-500">Last updated: March 12, 2026</p>
 

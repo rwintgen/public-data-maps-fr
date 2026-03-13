@@ -376,11 +376,12 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] Add pre-search labels to filter results in the back-end
 - [x] Add pre-search labels to filter results in the back-end
 - [x] Improve Loading elements (while querying and loading user data)
-- [ ] Create company dashboard (seats/permissions management, org settings)
+- [x] Create company dashboard (seats/permissions management, org settings)
+- [x] Add AI overview
+- [x] Set up custom domain (publicdatamaps.com) with Firebase App Hosting, Resend, and Stripe
+- [ ] Create landing page
 - [ ] Create private CRM dashboard
 - [ ] Add more auth features (forgot passsword, SSO sign-in, company sign in)
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)
 - [ ] Mobile-responsive layout
 - [ ] Create landing page
-- [x] Add AI overview
-- [x] Set up custom domain (publicdatamaps.com) with Firebase App Hosting, Resend, and Stripe
