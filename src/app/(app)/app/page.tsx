@@ -936,7 +936,7 @@ export default function Home() {
 
   if (!bootReady) {
     return (
-      <div className={`flex h-screen items-center justify-center ${isDark ? 'bg-gray-950' : 'bg-white'}`}>
+      <div className={`flex h-dvh items-center justify-center ${isDark ? 'bg-gray-950' : 'bg-white'}`}>
         <div className="flex flex-col items-center gap-4 w-64">
           <img src="/brand/logo-full.png" alt="Public Data Maps" className={`h-14 w-auto ${isDark ? 'invert' : ''}`} />
           <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }}>
@@ -955,7 +955,7 @@ export default function Home() {
 
   return (
     <>
-      <main className={`flex h-screen ${d.main}`}>
+      <main className={`flex h-dvh ${d.main}`}>
       {/* Map */}
       <div className="flex-1 h-full relative">
         <Map
@@ -1000,13 +1000,51 @@ export default function Home() {
         )}
       </div>
 
-      {/* Sidebar */}
-      <div
-          className={`flex-shrink-0 h-full transition-[width] duration-300 ease-in-out overflow-hidden ${d.sidebar} ${
-            sidebarOpen ? 'w-[380px]' : 'w-0'
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-[1199] bg-black/40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar toggle */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[1100] md:hidden flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg border transition-colors backdrop-blur-sm ${
+            isDark
+              ? 'bg-gray-900/90 border-white/15 text-gray-200'
+              : 'bg-white/90 border-gray-200 text-gray-700'
           }`}
         >
-          <div className="min-w-[380px] w-[380px] h-full flex flex-col">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <span className="text-xs font-medium">
+            {companies.length > 0 ? `${companies.length.toLocaleString()} results` : 'Open panel'}
+          </span>
+        </button>
+      )}
+
+      {/* Sidebar */}
+      <div
+          className={`
+            ${d.sidebar}
+            fixed inset-x-0 bottom-0 z-[1200] rounded-t-2xl shadow-2xl
+            transition-transform duration-300 ease-in-out
+            ${sidebarOpen ? 'translate-y-0' : 'translate-y-full'}
+            md:static md:z-auto md:rounded-none md:shadow-none
+            md:flex-shrink-0 md:h-full md:overflow-hidden
+            md:translate-y-0 md:transition-[width] md:duration-300 md:ease-in-out
+            ${sidebarOpen ? 'md:w-[380px]' : 'md:w-0'}
+          `}
+        >
+          {/* Mobile drag handle */}
+          <div className="md:hidden flex justify-center pt-2 pb-1">
+            <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`} />
+          </div>
+          <div className="h-[85dvh] md:h-full w-full md:min-w-[380px] md:w-[380px] flex flex-col">
         {isTruncated && resultLimit !== null && (
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400">
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1685,7 +1723,7 @@ export default function Home() {
     )}
 
     {emailVerifyPrompt && (
-      <Modal isDark={isDark} onClose={() => setEmailVerifyPrompt(false)} zIndex="z-[9800]" className={`w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
+      <Modal isDark={isDark} onClose={() => setEmailVerifyPrompt(false)} zIndex="z-[9800]" className={`w-full md:w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
         {(handleClose) => (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1803,7 +1841,7 @@ export default function Home() {
     )}
 
     {orgSetupPrompt && (
-      <Modal isDark={isDark} onClose={() => setOrgSetupPrompt(false)} zIndex="z-[9500]" className={`w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
+      <Modal isDark={isDark} onClose={() => setOrgSetupPrompt(false)} zIndex="z-[9500]" className={`w-full md:w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
         {(handleClose) => (<>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Organization required</h3>
@@ -1838,7 +1876,7 @@ export default function Home() {
     )}
 
     {revertConfirmOpen && (
-      <Modal isDark={isDark} onClose={() => setRevertConfirmOpen(false)} zIndex="z-[9600]" className={`w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
+      <Modal isDark={isDark} onClose={() => setRevertConfirmOpen(false)} zIndex="z-[9600]" className={`w-full md:w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
         {(handleClose) => (<>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Revert to free plan?</h3>

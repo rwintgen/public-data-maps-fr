@@ -195,7 +195,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
   ]
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9500]" className={`w-[880px] max-h-[90vh] overflow-y-auto ${t.bg}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9500]" className={`w-full md:w-[880px] max-h-[90vh] overflow-y-auto ${t.bg}`}>
       {(handleClose) => (<>
         <div className="flex items-start justify-between px-6 pt-6 pb-2">
           <div className="min-w-0 flex-1 pr-4">
@@ -266,7 +266,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
         )}
 
         {/* Plan cards */}
-        <div className="grid grid-cols-4 gap-3 px-6 pt-4 pb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 px-6 pt-4 pb-2">
           {plans.map((plan) => (
             <div
               key={plan.id}

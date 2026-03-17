@@ -6,6 +6,11 @@ html, body {
   height: 100%;
 }
 
+/* Support safe areas on iOS devices (notch/home indicator) */
+html {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
 /* Lock scroll on full-screen app pages (map/org). Marketing pages scroll normally. */
 html:has(body.app-shell) {
   overflow: hidden;
@@ -498,4 +503,27 @@ input[type=range].pdm-range::-moz-range-progress {
 }
 .animate-loading-bar {
   animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+/* === Mobile: larger touch targets for Leaflet controls === */
+@media (max-width: 767px) {
+  .leaflet-bar a,
+  .leaflet-draw-toolbar a,
+  .leaflet-touch .leaflet-bar a,
+  .leaflet-touch .leaflet-draw-toolbar a {
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    font-size: 20px !important;
+  }
+  .leaflet-control-zoom {
+    gap: 8px !important;
+  }
+  .leaflet-draw-toolbar li {
+    margin-bottom: 8px;
+  }
+  /* Hide tooltip on touch devices */
+  [data-tooltip]::after {
+    display: none !important;
+  }
 }

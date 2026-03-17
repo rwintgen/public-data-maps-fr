@@ -35,13 +35,13 @@ export function Modal({ isDark, onClose, zIndex, children, className = '' }: {
   return (
     <div
       ref={overlayRef}
-      className={`fixed inset-0 ${zIndex} flex items-center justify-center backdrop-blur-sm transition-opacity duration-200 ${
+      className={`fixed inset-0 ${zIndex} flex items-end md:items-center justify-center backdrop-blur-sm transition-opacity duration-200 ${
         isDark ? 'bg-black/50' : 'bg-black/30'
       } ${visible ? 'opacity-100' : 'opacity-0'}`}
       onMouseDown={(e) => { if (e.target === overlayRef.current) handleClose() }}
     >
-      <div className={`rounded-2xl border shadow-2xl transition-all duration-200 ${
-        visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+      <div className={`w-full md:w-auto rounded-t-2xl md:rounded-2xl border shadow-2xl transition-all duration-200 ${
+        visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 md:scale-95 translate-y-4 md:translate-y-0'
       } ${className}`}>
         {children(handleClose)}
       </div>
@@ -236,7 +236,7 @@ export function ConfirmModal({ isDark, title, message, confirmLabel = 'Confirm',
   return (
     <Modal isDark={isDark} onClose={onCancel} zIndex="z-[9999]" className={isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}>
       {(handleClose) => (
-        <div className="w-[360px] p-5">
+        <div className="w-full md:w-[360px] p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h3>
             <CloseButton onClick={handleClose} isDark={isDark} />

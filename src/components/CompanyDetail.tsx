@@ -47,7 +47,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
       }
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[8000]" className={`relative w-[440px] max-h-[80vh] flex flex-col ${t.bg}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[8000]" className={`relative w-full md:w-[440px] max-h-[80vh] flex flex-col ${t.bg}`}>
       {(handleClose) => (<>
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div className="min-w-0 flex-1 pr-4">

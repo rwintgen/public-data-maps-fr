@@ -146,7 +146,7 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
       }
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9000]" className={`relative w-[400px] max-h-[80vh] flex flex-col ${t.modal}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9000]" className={`relative w-full md:w-[400px] max-h-[80vh] flex flex-col ${t.modal}`}>
       {(handleClose) => (<>
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div>

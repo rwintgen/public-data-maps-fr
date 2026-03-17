@@ -167,7 +167,7 @@ export default function AIOverview({ company, isDark, onClose, userToken, savedO
       }
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[8500]" className={`w-[520px] max-h-[85vh] flex flex-col ${t.bg}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[8500]" className={`w-full md:w-[520px] max-h-[85vh] flex flex-col ${t.bg}`}>
       {(handleClose) => (<>
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div className="min-w-0 flex-1 pr-4">

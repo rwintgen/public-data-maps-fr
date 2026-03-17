@@ -189,7 +189,7 @@ export default function SettingsModal({
       }
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[7500]" className={`w-[400px] max-h-[85vh] flex flex-col ${t.bg}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[7500]" className={`w-full md:w-[400px] max-h-[85vh] flex flex-col ${t.bg}`}>
       {(handleClose) => (
         <>
           {/* Header */}

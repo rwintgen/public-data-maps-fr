@@ -429,11 +429,11 @@ export default function Map({
       <ResizeWatcher />
     </MapContainer>
 
-    {/* Sidebar toggle — right edge, vertically centered, styled as map button */}
+    {/* Sidebar toggle — desktop only, right edge, vertically centered */}
     <button
       onClick={onToggleSidebar}
       style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 1100 }}
-      className="w-8 h-16 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 shadow-md flex items-center justify-center transition-colors"
+      className="hidden md:flex w-8 h-16 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 shadow-md items-center justify-center transition-colors"
       data-tooltip={sidebarOpen ? 'Hide panel' : 'Show panel'} data-tooltip-pos="left"
     >
       <svg
@@ -444,8 +444,8 @@ export default function Map({
       </svg>
     </button>
 
-    {/* Map control buttons — bottom left */}
-    <div className="absolute bottom-8 left-3 z-[1000] flex flex-col gap-2">
+    {/* Map control buttons — bottom-right on mobile, bottom-left on desktop */}
+    <div className="absolute bottom-20 right-3 md:bottom-8 md:left-3 md:right-auto z-[1000] flex flex-col gap-2">
       <button
         onClick={onLocate}
         className="bg-white hover:bg-gray-50 border border-gray-300 shadow-md rounded-lg w-8 h-8 flex items-center justify-center transition-colors"

@@ -106,7 +106,7 @@ export default function ColumnConfig({
       }
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9000]" className={`w-[400px] max-h-[85vh] flex flex-col overflow-hidden ${t.bg}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9000]" className={`w-full md:w-[400px] max-h-[85vh] flex flex-col overflow-hidden ${t.bg}`}>
       {(handleClose) => (<>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h3 className={`text-sm font-semibold ${t.title}`}>Default Fields</h3>

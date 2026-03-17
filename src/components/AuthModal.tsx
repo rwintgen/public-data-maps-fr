@@ -169,7 +169,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
       }
 
   return (
-    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9800]" className={`w-[360px] p-6 ${t.modal}`}>
+    <Modal isDark={isDark} onClose={onClose} zIndex="z-[9800]" className={`w-full md:w-[360px] p-6 ${t.modal}`}>
       {(handleClose) => (
         <>
         <div className={`flex items-center justify-between mb-5 border-b pb-0 ${t.tabBorder}`}>
