@@ -1565,7 +1565,7 @@ export default function Home() {
             onPresetsChange={setActivePresets}
             customPresets={customPresets}
             onCustomPresetsChange={setCustomPresets}
-            disabledPresetIds={canUsePresets(userTier) ? [...preQueryPresets, ...preQueryCustomIds, ...preQueryOrgIds] : []}
+            disabledPresetIds={[...preQueryPresets, ...preQueryCustomIds, ...preQueryOrgIds]}
             userTier={userTier}
             orgQuickFilters={orgQuickFilters}
             orgRole={orgRole}
