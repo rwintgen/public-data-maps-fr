@@ -290,6 +290,9 @@ export const PRESET_FILTERS: PresetFilter[] = [
 /** Group labels in display order. */
 export const PRESET_GROUPS = ['Status', 'Legal form', 'Size', 'Values', 'Sector'] as const
 
+/** Baseline pre-search quick filters applied by default (including anonymous usage). */
+export const DEFAULT_PRE_QUERY_PRESETS = ['active', 'company'] as const
+
 export interface CustomPreset {
   id: string
   label: string

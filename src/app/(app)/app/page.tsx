@@ -12,7 +12,7 @@ import Paywall from '@/components/Paywall'
 import AIOverview from '@/components/AIOverview'
 import SettingsModal from '@/components/SettingsModal'
 import { Modal, CloseButton, PresetPill, CardSection, SectionTitle, ConfirmModal } from '@/components/ui'
-import { applyPresets, PRESET_FILTERS, PRESET_GROUPS, type CustomPreset } from '@/lib/presets'
+import { applyPresets, PRESET_FILTERS, PRESET_GROUPS, DEFAULT_PRE_QUERY_PRESETS, type CustomPreset } from '@/lib/presets'
 import {
   type UserTier,
   getUserKey,
@@ -102,8 +102,8 @@ export default function Home() {
   const [activePresets, setActivePresets] = useState<string[]>([])
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>([])
   const [customResultLimit, setCustomResultLimit] = useState<number | null>(null)
-  const [defaultPresets, setDefaultPresets] = useState<string[]>([])
-  const [preQueryPresets, setPreQueryPresets] = useState<string[]>([])
+  const [defaultPresets, setDefaultPresets] = useState<string[]>([...DEFAULT_PRE_QUERY_PRESETS])
+  const [preQueryPresets, setPreQueryPresets] = useState<string[]>([...DEFAULT_PRE_QUERY_PRESETS])
   const [preQueryFilters, setPreQueryFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string; joinOr?: boolean }[]>([])
   const [preQueryCustomIds, setPreQueryCustomIds] = useState<string[]>([])
   const [pqCustomForm, setPqCustomForm] = useState(false)
@@ -244,6 +244,8 @@ export default function Home() {
   useEffect(() => {
     if (!user) {
       profileLoaded.current = false
+      setDefaultPresets([...DEFAULT_PRE_QUERY_PRESETS])
+      setPreQueryPresets([...DEFAULT_PRE_QUERY_PRESETS])
       setBootSteps((s) => ({ ...s, preferences: true }))
       return
     }
@@ -259,7 +261,13 @@ export default function Home() {
         else if (typeof p.isDark === 'boolean') setThemeMode(p.isDark ? 'dark' : 'light')
         if (Array.isArray(p.customPresets)) setCustomPresets(p.customPresets)
         if (typeof p.customResultLimit === 'number') setCustomResultLimit(p.customResultLimit)
-        if (Array.isArray(p.defaultPresets)) { setDefaultPresets(p.defaultPresets); setPreQueryPresets(p.defaultPresets) }
+        if (Array.isArray(p.defaultPresets)) {
+          setDefaultPresets(p.defaultPresets)
+          setPreQueryPresets(p.defaultPresets)
+        } else {
+          setDefaultPresets([...DEFAULT_PRE_QUERY_PRESETS])
+          setPreQueryPresets([...DEFAULT_PRE_QUERY_PRESETS])
+        }
       }
     } catch (_) {}
     getDoc(doc(db, 'userProfiles', user.uid))
@@ -273,7 +281,13 @@ export default function Home() {
           else if (typeof p.isDark === 'boolean') setThemeMode(p.isDark ? 'dark' : 'light')
           if (Array.isArray(p.customPresets)) setCustomPresets(p.customPresets)
           if (typeof p.customResultLimit === 'number') setCustomResultLimit(p.customResultLimit)
-          if (Array.isArray(p.defaultPresets)) { setDefaultPresets(p.defaultPresets); setPreQueryPresets(p.defaultPresets) }
+          if (Array.isArray(p.defaultPresets)) {
+            setDefaultPresets(p.defaultPresets)
+            setPreQueryPresets(p.defaultPresets)
+          } else {
+            setDefaultPresets([...DEFAULT_PRE_QUERY_PRESETS])
+            setPreQueryPresets([...DEFAULT_PRE_QUERY_PRESETS])
+          }
           try { localStorage.setItem(key, JSON.stringify(p)) } catch (_) {}
         }
         profileLoaded.current = true
@@ -1378,7 +1392,7 @@ export default function Home() {
                   {preQueryFilters.map((f, i) => (
                     <div key={i}>
                       {i > 0 && (
-                        <div className="flex justify-center py-0.5">
+                        <div className="flex justify-start pl-1 py-0.5">
                           <button
                             disabled={locked}
                             onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, joinOr: !x.joinOr } : x))}
@@ -1551,7 +1565,7 @@ export default function Home() {
             onPresetsChange={setActivePresets}
             customPresets={customPresets}
             onCustomPresetsChange={setCustomPresets}
-            disabledPresetIds={[...preQueryPresets, ...preQueryCustomIds, ...preQueryOrgIds]}
+            disabledPresetIds={canUsePresets(userTier) ? [...preQueryPresets, ...preQueryCustomIds, ...preQueryOrgIds] : []}
             userTier={userTier}
             orgQuickFilters={orgQuickFilters}
             orgRole={orgRole}
