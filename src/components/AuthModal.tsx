@@ -9,8 +9,11 @@ import {
   updateProfile,
   sendEmailVerification,
   sendPasswordResetEmail,
+  getAdditionalUserInfo,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
+import { doc, setDoc } from 'firebase/firestore'
 import { Modal, CloseButton } from '@/components/ui'
 
 interface Props {
@@ -33,6 +36,12 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [verificationSent, setVerificationSent] = useState(false)
+
+  const ensureDefaultQuickFilters = async (uid: string) => {
+    await setDoc(doc(db, 'userProfiles', uid), {
+      defaultPresets: ['active', 'company'],
+    }, { merge: true })
+  }
 
   /** Maps Firebase Auth error codes to user-friendly messages. */
   const friendlyError = (code: string) => {
@@ -58,6 +67,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
       } else {
         const { user } = await createUserWithEmailAndPassword(auth, email, password)
         if (name.trim()) await updateProfile(user, { displayName: name.trim() })
+        await ensureDefaultQuickFilters(user.uid)
         await sendEmailVerification(user)
         setVerificationSent(true)
       }
@@ -91,7 +101,10 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
     isSigningIn.current = true
     setError('')
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider())
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider())
+      if (getAdditionalUserInfo(cred)?.isNewUser) {
+        await ensureDefaultQuickFilters(cred.user.uid)
+      }
       onClose()
     } catch (err: any) {
       if (err?.code !== 'auth/cancelled-popup-request' && err?.code !== 'auth/popup-closed-by-user') {
