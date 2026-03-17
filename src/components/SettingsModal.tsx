@@ -55,6 +55,7 @@ interface SettingsModalProps {
   onCustomResultLimitChange: (limit: number | null) => void
   defaultPresets: string[]
   onDefaultPresetsChange: (presets: string[]) => void
+  hiddenFields: string[]
   orgId: string | null
   orgRole: 'owner' | 'admin' | 'member' | null
   orgName: string | null
@@ -95,6 +96,7 @@ export default function SettingsModal({
   onCustomResultLimitChange,
   defaultPresets,
   onDefaultPresetsChange,
+  hiddenFields,
   orgId,
   orgRole,
   orgName,
@@ -347,73 +349,89 @@ export default function SettingsModal({
               )}
 
               <div>
-                <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Visible Fields</div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { onFieldsModal('list'); handleClose() }}
-                    className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
-                  >
-                    List ({listColumns.length})
-                  </button>
-                  <button
-                    onClick={() => { onFieldsModal('popup'); handleClose() }}
-                    className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
-                  >
-                    Popup ({popupColumns.length})
-                  </button>
-                </div>
-              </div>
-
-              {canUsePresets(userTier) && (
-                <div>
-                  <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Default Quick Filters</div>
-                  <div className={`rounded-lg border p-3 space-y-1.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
-                    {PRESET_GROUPS.map((group) => {
-                      const presets = PRESET_FILTERS.filter((p) => p.group === group)
-                      const activeInGroup = presets.filter((p) => defaultPresets.includes(p.id))
-                      return (
-                        <div key={group} className="mb-1 last:mb-0">
-                          <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {presets.map((preset) => {
-                              const active = defaultPresets.includes(preset.id)
-                              const activeIdx = activeInGroup.indexOf(preset)
-                              return (
-                                <span key={preset.id} className="contents">
-                                  {active && activeIdx > 0 && (
-                                    <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
-                                  )}
-                                  <PresetPill
-                                    label={preset.label}
-                                    active={active}
-                                    isDark={isDark}
-                                    onClick={() => onDefaultPresetsChange(
-                                      active
-                                        ? defaultPresets.filter((id) => id !== preset.id)
-                                        : [...defaultPresets, preset.id]
-                                    )}
-                                  />
-                                </span>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                    {defaultPresets.length > 0 && (
+                <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Query Parameters</div>
+                <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
+                  <div>
+                    <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${t.label}`}>Default Visible Fields</div>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => onDefaultPresetsChange([])}
-                        className={`text-[10px] font-medium mt-1 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                        onClick={() => { onFieldsModal('list'); handleClose() }}
+                        className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
                       >
-                        Clear all
+                        List ({listColumns.length})
                       </button>
-                    )}
+                      <button
+                        onClick={() => { onFieldsModal('popup'); handleClose() }}
+                        className={`flex-1 text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
+                      >
+                        Popup ({popupColumns.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${t.label}`}>Default Hidden Fields</div>
                     <p className={`text-[10px] ${t.label}`}>
-                      These quick filters will be automatically selected as pre-search filters on every new search.
+                      {hiddenFields.length} fields are hidden by default to reduce clutter.
                     </p>
                   </div>
+
+                  {canUsePresets(userTier) ? (
+                    <div>
+                      <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${t.label}`}>Default Quick Filters</div>
+                      <div className="space-y-1.5">
+                        {PRESET_GROUPS.map((group) => {
+                          const presets = PRESET_FILTERS.filter((p) => p.group === group)
+                          const activeInGroup = presets.filter((p) => defaultPresets.includes(p.id))
+                          return (
+                            <div key={group} className="mb-1 last:mb-0">
+                              <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
+                              <div className="flex flex-wrap gap-1 items-center">
+                                {presets.map((preset) => {
+                                  const active = defaultPresets.includes(preset.id)
+                                  const activeIdx = activeInGroup.indexOf(preset)
+                                  return (
+                                    <span key={preset.id} className="contents">
+                                      {active && activeIdx > 0 && (
+                                        <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                                      )}
+                                      <PresetPill
+                                        label={preset.label}
+                                        active={active}
+                                        isDark={isDark}
+                                        onClick={() => onDefaultPresetsChange(
+                                          active
+                                            ? defaultPresets.filter((id) => id !== preset.id)
+                                            : [...defaultPresets, preset.id]
+                                        )}
+                                      />
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {defaultPresets.length > 0 && (
+                          <button
+                            onClick={() => onDefaultPresetsChange([])}
+                            className={`text-[10px] font-medium mt-1 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                          >
+                            Clear all
+                          </button>
+                        )}
+                        <p className={`text-[10px] ${t.label}`}>
+                          These quick filters will be automatically selected as pre-search filters on every new search.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className={`text-[10px] ${t.label}`}>
+                      Default quick filters are managed automatically on your current plan.
+                    </p>
+                  )}
                 </div>
-              )}
+              </div>
 
               {(userTier === 'individual' || userTier === 'enterprise') && (() => {
                 const maxForTier = userTier === 'enterprise' ? MAX_ENTERPRISE_RESULT_LIMIT : TIER_LIMITS[userTier].resultsPerQuery

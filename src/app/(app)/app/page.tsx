@@ -591,7 +591,37 @@ export default function Home() {
     return warnings
   }, [userTier, searchCount, savedSearchCount])
 
+  const clearLocalDataPreservingQuotas = useCallback(() => {
+    try {
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (!key) continue
+        if (key.startsWith('pdm_usage_') || key === 'pdm_anon_id') continue
+        keysToRemove.push(key)
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k))
+    } catch {}
+  }, [])
+
   const handleSignOut = async () => {
+    clearLocalDataPreservingQuotas()
+    setCompanies([])
+    setSearchArea(null)
+    setSelectedCompany(null)
+    setExpandedCompany(null)
+    setActiveSearchId(null)
+    setSortCriteria([])
+    setFilters([])
+    setActivePresets([])
+    setCustomPresets([])
+    setCustomResultLimit(null)
+    setDefaultPresets([...DEFAULT_PRE_QUERY_PRESETS])
+    setPreQueryPresets([...DEFAULT_PRE_QUERY_PRESETS])
+    setPreQueryFilters([])
+    setPreQueryCustomIds([])
+    setPreQueryOrgIds([])
+    setHiddenFields([...DEFAULT_HIDDEN_FIELDS])
     await signOut(auth)
     setUserTier('free')
     setDiscountInfo(null)
@@ -626,20 +656,21 @@ export default function Home() {
       setOrgRole(null)
       setOrgName(null)
       setOrgSetupPrompt(false)
-      // Clear localStorage for this user
-      try {
-        localStorage.removeItem(`pdm_usage_${uid}`)
-        localStorage.removeItem(`prefs_${uid}`)
-        const keysToRemove: string[] = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (key?.startsWith('pdm_saved_')) keysToRemove.push(key)
-        }
-        keysToRemove.forEach((k) => localStorage.removeItem(k))
-      } catch {}
+      clearLocalDataPreservingQuotas()
+      setSortCriteria([])
+      setFilters([])
+      setActivePresets([])
+      setCustomPresets([])
+      setCustomResultLimit(null)
+      setDefaultPresets([...DEFAULT_PRE_QUERY_PRESETS])
+      setPreQueryPresets([...DEFAULT_PRE_QUERY_PRESETS])
+      setPreQueryFilters([])
+      setPreQueryCustomIds([])
+      setPreQueryOrgIds([])
+      setHiddenFields([...DEFAULT_HIDDEN_FIELDS])
       await signOut(auth)
     } catch {}
-  }, [user])
+  }, [user, clearLocalDataPreservingQuotas])
 
   const handleExpand = useCallback(async (company: any) => {
     setExpandedCompany(company)
@@ -1702,6 +1733,7 @@ export default function Home() {
         onCustomResultLimitChange={setCustomResultLimit}
         defaultPresets={defaultPresets}
         onDefaultPresetsChange={setDefaultPresets}
+        hiddenFields={hiddenFields}
         orgId={orgId}
         orgRole={orgRole}
         orgName={orgName}
