@@ -10,6 +10,7 @@ interface Filter {
   operator: 'contains' | 'equals' | 'empty'
   negate: boolean
   value: string
+  joinOr?: boolean
 }
 
 interface SortCriterion {
@@ -127,19 +128,31 @@ function CompanyList({
   const processed = useMemo(() => {
     let result = [...companies]
 
-    for (const f of filters) {
-      if (!f.column) continue
-      result = result.filter((c) => {
-        const val = (c.fields?.[f.column] ?? '').toString().toLowerCase()
-        let match: boolean
-        switch (f.operator) {
-          case 'contains': match = val.includes(f.value.toLowerCase()); break
-          case 'equals': match = val === f.value.toLowerCase(); break
-          case 'empty': match = val.length === 0; break
-          default: match = true
+    if (filters.length > 0) {
+      const groups: Filter[][] = []
+      for (const f of filters) {
+        if (!f.column) continue
+        if (f.joinOr && groups.length > 0) {
+          groups[groups.length - 1].push(f)
+        } else {
+          groups.push([f])
         }
-        return f.negate ? !match : match
-      })
+      }
+      for (const group of groups) {
+        result = result.filter((c) =>
+          group.some((f) => {
+            const val = (c.fields?.[f.column] ?? '').toString().toLowerCase()
+            let match: boolean
+            switch (f.operator) {
+              case 'contains': match = val.includes(f.value.toLowerCase()); break
+              case 'equals': match = val === f.value.toLowerCase(); break
+              case 'empty': match = val.length === 0; break
+              default: match = true
+            }
+            return f.negate ? !match : match
+          })
+        )
+      }
     }
 
     result = applyPresets(result, activePresets, [...customPresets, ...orgQuickFilters])
@@ -177,7 +190,7 @@ function CompanyList({
   }
 
   const addFilter = () => {
-    onFiltersChange([...filters, { column: columns[0] || '', operator: 'contains', negate: false, value: '' }])
+    onFiltersChange([...filters, { column: columns[0] || '', operator: 'contains', negate: false, value: '', joinOr: false }])
   }
   const removeFilter = (i: number) => {
     onFiltersChange(filters.filter((_, idx) => idx !== i))
@@ -439,11 +452,16 @@ function CompanyList({
               return null
             })}
             {filters.map((f, i) => (
-              <span key={`filter-${i}`} className={`inline-flex items-center gap-1 text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.presetTagActive}`}>
-                {f.column.length > 12 ? f.column.substring(0, 12) + '…' : f.column} {f.negate ? 'NOT ' : ''}{f.operator}{f.operator !== 'empty' && f.value ? ` "${f.value.length > 8 ? f.value.substring(0, 8) + '…' : f.value}"` : ''}
-                <button onClick={() => removeFilter(i)} className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-black/10">
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+              <span key={`filter-${i}`} className="contents">
+                {i > 0 && (
+                  <span className={`text-[9px] italic flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{f.joinOr ? 'or' : '&'}</span>
+                )}
+                <span className={`inline-flex items-center gap-1 text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.presetTagActive}`}>
+                  {f.column.length > 12 ? f.column.substring(0, 12) + '…' : f.column} {f.negate ? 'NOT ' : ''}{f.operator}{f.operator !== 'empty' && f.value ? ` "${f.value.length > 8 ? f.value.substring(0, 8) + '…' : f.value}"` : ''}
+                  <button onClick={() => removeFilter(i)} className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-black/10">
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </span>
               </span>
             ))}
           </div>
@@ -516,33 +534,39 @@ function CompanyList({
         <CardSection isDark={isDark} className="mb-2">
           {PRESET_GROUPS.map((group) => {
             const presets = PRESET_FILTERS.filter((p) => p.group === group)
+            const activeInGroup = presets.filter((p) => activePresets.includes(p.id))
             return (
               <div key={group} className="mb-1.5 last:mb-0">
                 <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 items-center">
                   {presets.map((preset) => {
                     const isActive = activePresets.includes(preset.id)
                     const isPreQuery = disabledPresetIds.includes(preset.id)
+                    const activeIdx = activeInGroup.indexOf(preset)
                     return (
-                      <PresetPill
-                        key={preset.id}
-                        label={preset.label}
-                        active={isActive}
-                        isDark={isDark}
-                        disabled={isPreQuery}
-                        onClick={() => {
-                          if (isActive) {
-                            onPresetsChange(activePresets.filter((id) => id !== preset.id))
-                          } else {
-                            onPresetsChange([...activePresets, preset.id])
-                          }
-                        }}
-                        onMouseEnter={() => setHoveredPreset(preset.id)}
-                        onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
-                        onMouseLeave={() => { setHoveredPreset(null); setPresetTooltipPos(null) }}
-                        tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
-                        tooltipPos={isPreQuery ? 'bottom-left' : undefined}
-                      />
+                      <span key={preset.id} className="contents">
+                        {isActive && activeIdx > 0 && (
+                          <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                        )}
+                        <PresetPill
+                          label={preset.label}
+                          active={isActive}
+                          isDark={isDark}
+                          disabled={isPreQuery}
+                          onClick={() => {
+                            if (isActive) {
+                              onPresetsChange(activePresets.filter((id) => id !== preset.id))
+                            } else {
+                              onPresetsChange([...activePresets, preset.id])
+                            }
+                          }}
+                          onMouseEnter={() => setHoveredPreset(preset.id)}
+                          onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
+                          onMouseLeave={() => { setHoveredPreset(null); setPresetTooltipPos(null) }}
+                          tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
+                          tooltipPos={isPreQuery ? 'bottom-left' : undefined}
+                        />
+                      </span>
                     )
                   })}
                 </div>
@@ -757,49 +781,66 @@ function CompanyList({
       )}
 
       {showFilters && (
-        <CardSection isDark={isDark} className="mb-2 space-y-1.5">
+        <CardSection isDark={isDark} className="mb-2 space-y-0">
           {filters.map((f, i) => (
-            <div key={i} className="flex items-center gap-1 min-w-0">
-              <ColSelect
-                value={f.column}
-                onChange={(v) => updateFilter(i, { column: v })}
-                columns={columns}
-                className={`flex-1 min-w-0 rounded border h-[26px] ${t.select}`}
-              />
-              <button
-                onClick={() => updateFilter(i, { negate: !f.negate })}
-                className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors ${
-                  f.negate
-                    ? 'text-orange-400 border-orange-500/50 bg-orange-500/10'
-                    : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
-                }`}
-                data-tooltip="Negate this filter condition"
-              >
-                NOT
-              </button>
-              <select
-                value={f.operator}
-                onChange={(e) => updateFilter(i, { operator: e.target.value as Filter['operator'] })}
-                className={`rounded border px-1 py-1 outline-none ${t.select}`}
-              >
-                <option value="contains">contains</option>
-                <option value="equals">equals</option>
-                <option value="empty">empty</option>
-              </select>
-              {f.operator !== 'empty' && (
-                <input
-                  type="text"
-                  value={f.value}
-                  onChange={(e) => updateFilter(i, { value: e.target.value })}
-                  placeholder="value…"
-                  className={`flex-1 min-w-0 rounded border px-1.5 py-1 outline-none ${t.input}`}
-                />
+            <div key={i}>
+              {i > 0 && (
+                <div className="flex justify-center py-0.5">
+                  <button
+                    onClick={() => updateFilter(i, { joinOr: !f.joinOr })}
+                    className={`text-[9px] font-bold tracking-wide rounded px-1.5 py-px border transition-colors ${
+                      f.joinOr
+                        ? isDark ? 'text-violet-400 border-violet-500/40 bg-violet-500/10' : 'text-violet-600 border-violet-400/50 bg-violet-50'
+                        : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
+                    }`}
+                    data-tooltip={f.joinOr ? 'OR — match either condition' : 'AND — match both conditions'}
+                  >
+                    {f.joinOr ? 'OR' : 'AND'}
+                  </button>
+                </div>
               )}
-              <button onClick={() => removeFilter(i)} className={`flex-shrink-0 ${t.filterRemove}`} data-tooltip="Remove filter">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-1 min-w-0">
+                <ColSelect
+                  value={f.column}
+                  onChange={(v) => updateFilter(i, { column: v })}
+                  columns={columns}
+                  className={`flex-1 min-w-0 rounded border h-[26px] ${t.select}`}
+                />
+                <button
+                  onClick={() => updateFilter(i, { negate: !f.negate })}
+                  className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors ${
+                    f.negate
+                      ? 'text-orange-400 border-orange-500/50 bg-orange-500/10'
+                      : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
+                  }`}
+                  data-tooltip="Negate this filter condition"
+                >
+                  NOT
+                </button>
+                <select
+                  value={f.operator}
+                  onChange={(e) => updateFilter(i, { operator: e.target.value as Filter['operator'] })}
+                  className={`rounded border px-1 py-1 outline-none ${t.select}`}
+                >
+                  <option value="contains">contains</option>
+                  <option value="equals">equals</option>
+                  <option value="empty">empty</option>
+                </select>
+                {f.operator !== 'empty' && (
+                  <input
+                    type="text"
+                    value={f.value}
+                    onChange={(e) => updateFilter(i, { value: e.target.value })}
+                    placeholder="value…"
+                    className={`flex-1 min-w-0 rounded border px-1.5 py-1 outline-none ${t.input}`}
+                  />
+                )}
+                <button onClick={() => removeFilter(i)} className={`flex-shrink-0 ${t.filterRemove}`} data-tooltip="Remove filter">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           ))}
           <button

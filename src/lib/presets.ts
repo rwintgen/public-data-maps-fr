@@ -316,7 +316,8 @@ function customPresetTest(p: CustomPreset): (fields: Record<string, string>) => 
 
 /**
  * Applies active quick filters to a company array.
- * All active filters are ANDed — a company must pass every active test.
+ * Intra-group OR (same group → any match), inter-group AND (all groups must pass).
+ * Custom/org presets form their own "Custom" group.
  */
 export function applyPresets(
   companies: any[],
@@ -324,15 +325,30 @@ export function applyPresets(
   customPresets?: CustomPreset[],
 ): any[] {
   if (activePresetIds.length === 0) return companies
-  const tests: ((fields: Record<string, string>) => boolean)[] = []
+
+  const grouped = new Map<string, ((fields: Record<string, string>) => boolean)[]>()
+
   for (const id of activePresetIds) {
     const builtin = PRESET_FILTERS.find((p) => p.id === id)
-    if (builtin) { tests.push(builtin.test); continue }
+    if (builtin) {
+      const group = builtin.group
+      if (!grouped.has(group)) grouped.set(group, [])
+      grouped.get(group)!.push(builtin.test)
+      continue
+    }
     const custom = customPresets?.find((p) => p.id === id)
-    if (custom) tests.push(customPresetTest(custom))
+    if (custom) {
+      const group = '__custom__'
+      if (!grouped.has(group)) grouped.set(group, [])
+      grouped.get(group)!.push(customPresetTest(custom))
+    }
   }
-  if (tests.length === 0) return companies
-  return companies.filter((c) =>
-    tests.every((test) => test(c.fields ?? {})),
-  )
+
+  if (grouped.size === 0) return companies
+
+  const groups = Array.from(grouped.values())
+  return companies.filter((c) => {
+    const fields = c.fields ?? {}
+    return groups.every((tests) => tests.some((test) => test(fields)))
+  })
 }

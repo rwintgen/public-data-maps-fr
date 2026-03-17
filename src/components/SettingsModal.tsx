@@ -19,6 +19,7 @@ interface Filter {
   operator: 'contains' | 'equals' | 'empty'
   negate: boolean
   value: string
+  joinOr?: boolean
 }
 
 interface SettingsModalProps {

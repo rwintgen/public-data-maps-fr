@@ -111,11 +111,42 @@ const PRESET_SQL: Record<string, string> = {
   health:       `((${NAF_DIV}) = 83 OR (${NAF_DIV}) BETWEEN 86 AND 88)`,
 }
 
+const PRESET_GROUP: Record<string, string> = {
+  active: 'Status',
+  closed: 'Status',
+  hq: 'Status',
+  diffusible: 'Status',
+  company: 'Legal form',
+  freelance: 'Legal form',
+  sas: 'Legal form',
+  sarl: 'Legal form',
+  association: 'Legal form',
+  employer: 'Size',
+  pme: 'Size',
+  'eti-ge': 'Size',
+  '50plus': 'Size',
+  ess: 'Values',
+  mission: 'Values',
+  commerce: 'Sector',
+  industry: 'Sector',
+  construction: 'Sector',
+  tech: 'Sector',
+  health: 'Sector',
+  food: 'Sector',
+  transport: 'Sector',
+  finance: 'Sector',
+  realestate: 'Sector',
+  'pro-services': 'Sector',
+  education: 'Sector',
+  agriculture: 'Sector',
+}
+
 interface PreQueryFilter {
   column: string
   operator: 'contains' | 'equals' | 'empty'
   negate: boolean
   value: string
+  joinOr?: boolean
 }
 
 /**
@@ -131,6 +162,7 @@ function validateFilters(raw: unknown, knownColumns: string[] | null): PreQueryF
       typeof f.column === 'string' && f.column.length > 0 && f.column.length < 200 &&
       validOps.has(f.operator) &&
       typeof f.negate === 'boolean' &&
+      (f.joinOr === undefined || typeof f.joinOr === 'boolean') &&
       typeof f.value === 'string' && f.value.length < 500 &&
       (!knownColumns || knownColumns.includes(f.column))
     )
@@ -139,10 +171,11 @@ function validateFilters(raw: unknown, knownColumns: string[] | null): PreQueryF
 
 /**
  * Builds parameterized SQL WHERE clauses for custom pre-query filters.
+ * Consecutive filters with `joinOr=true` are ORed together; groups are ANDed.
  * Returns { clauses: string[], params: any[], nextParam: number }.
  */
 function buildFilterSQL(filters: PreQueryFilter[], startParam: number): { clauses: string[]; params: any[]; nextParam: number } {
-  const clauses: string[] = []
+  const groups: string[][] = []
   const params: any[] = []
   let p = startParam
   for (const f of filters) {
@@ -166,9 +199,29 @@ function buildFilterSQL(filters: PreQueryFilter[], startParam: number): { clause
       default:
         continue
     }
-    clauses.push(f.negate ? `NOT (${clause})` : `(${clause})`)
+    const normalized = f.negate ? `NOT (${clause})` : `(${clause})`
+    if (f.joinOr && groups.length > 0) {
+      groups[groups.length - 1].push(normalized)
+    } else {
+      groups.push([normalized])
+    }
   }
+  const clauses = groups.map((group) => group.length > 1 ? `(${group.join(' OR ')})` : group[0])
   return { clauses, params, nextParam: p }
+}
+
+function buildPresetSQL(presets: string[]): string[] {
+  const grouped = new Map<string, string[]>()
+  for (const id of presets) {
+    const sql = PRESET_SQL[id]
+    const group = PRESET_GROUP[id] ?? '__other__'
+    if (!sql) continue
+    if (!grouped.has(group)) grouped.set(group, [])
+    grouped.get(group)!.push(`(${sql})`)
+  }
+  return Array.from(grouped.values()).map((groupClauses) =>
+    groupClauses.length > 1 ? `(${groupClauses.join(' OR ')})` : groupClauses[0]
+  )
 }
 
 async function getColumnsFromDb(): Promise<string[]> {
@@ -303,10 +356,8 @@ export async function POST(req: NextRequest) {
               isConnector: true,
             }))
           } else {
-            const presetClauses = presets
-              .filter((id) => Object.prototype.hasOwnProperty.call(PRESET_SQL, id))
-              .map((id) => PRESET_SQL[id])
-            const wherePresets = presetClauses.length > 0 ? ` AND (${presetClauses.join(') AND (')})` : ''
+            const presetClauses = buildPresetSQL(presets)
+            const wherePresets = presetClauses.length > 0 ? ` AND ${presetClauses.join(' AND ')}` : ''
             const { clauses: filterClauses, params: filterParams } = buildFilterSQL(filters, 3)
             const whereFilters = filterClauses.length > 0 ? ` AND ${filterClauses.join(' AND ')}` : ''
 

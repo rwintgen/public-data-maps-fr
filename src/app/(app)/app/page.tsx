@@ -98,13 +98,13 @@ export default function Home() {
   const [fieldsModalTab, setFieldsModalTab] = useState<'list' | 'popup' | null>(null)
 
   const [sortCriteria, setSortCriteria] = useState<{ column: string; dir: 'asc' | 'desc' }[]>([])
-  const [filters, setFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[]>([])
+  const [filters, setFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string; joinOr?: boolean }[]>([])
   const [activePresets, setActivePresets] = useState<string[]>([])
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>([])
   const [customResultLimit, setCustomResultLimit] = useState<number | null>(null)
   const [defaultPresets, setDefaultPresets] = useState<string[]>([])
   const [preQueryPresets, setPreQueryPresets] = useState<string[]>([])
-  const [preQueryFilters, setPreQueryFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string }[]>([])
+  const [preQueryFilters, setPreQueryFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string; joinOr?: boolean }[]>([])
   const [preQueryCustomIds, setPreQueryCustomIds] = useState<string[]>([])
   const [pqCustomForm, setPqCustomForm] = useState(false)
   const [pqCustomLabel, setPqCustomLabel] = useState('')
@@ -381,10 +381,10 @@ export default function Home() {
         ...preQueryFilters,
         ...customPresets
           .filter((cp) => preQueryCustomIds.includes(cp.id))
-          .map((cp) => ({ column: cp.column, operator: cp.operator, negate: cp.negate, value: cp.value })),
+          .map((cp) => ({ column: cp.column, operator: cp.operator, negate: cp.negate, value: cp.value, joinOr: false })),
         ...orgQuickFilters
           .filter((oq) => preQueryOrgIds.includes(oq.id))
-          .map((oq) => ({ column: oq.column, operator: oq.operator, negate: oq.negate, value: oq.value })),
+          .map((oq) => ({ column: oq.column, operator: oq.operator, negate: oq.negate, value: oq.value, joinOr: false })),
       ]
       const searchBody: Record<string, any> = { geometry, limit: tierLimit, presets: preQueryPresets, filters: allFilters }
       if (connectorSource && orgId) {
@@ -525,19 +525,29 @@ export default function Home() {
   const mapCompanies = useMemo(() => {
     let result: any[] = [...companies]
     if (filters.length > 0) {
+      const groups: typeof filters[number][][] = []
       for (const f of filters) {
         if (!f.column) continue
-        result = result.filter((c: any) => {
-          const val = (c.fields?.[f.column] ?? '').toString().toLowerCase()
-          let match: boolean
-          switch (f.operator) {
-            case 'contains': match = val.includes(f.value.toLowerCase()); break
-            case 'equals': match = val === f.value.toLowerCase(); break
-            case 'empty': match = val.length === 0; break
-            default: match = true
-          }
-          return f.negate ? !match : match
-        })
+        if (f.joinOr && groups.length > 0) {
+          groups[groups.length - 1].push(f)
+        } else {
+          groups.push([f])
+        }
+      }
+      for (const group of groups) {
+        result = result.filter((c: any) =>
+          group.some((f) => {
+            const val = (c.fields?.[f.column] ?? '').toString().toLowerCase()
+            let match: boolean
+            switch (f.operator) {
+              case 'contains': match = val.includes(f.value.toLowerCase()); break
+              case 'equals': match = val === f.value.toLowerCase(); break
+              case 'empty': match = val.length === 0; break
+              default: match = true
+            }
+            return f.negate ? !match : match
+          })
+        )
       }
     }
     result = applyPresets(result, activePresets, [...customPresets, ...orgQuickFilters])
@@ -1169,24 +1179,30 @@ export default function Home() {
                 <CardSection isDark={isDark}>
                   {!connectorSource && PRESET_GROUPS.map((group) => {
                     const presets = PRESET_FILTERS.filter((p) => p.group === group)
+                    const activeInGroup = presets.filter((p) => preQueryPresets.includes(p.id))
                     return (
                       <div key={group} className="mb-1.5 last:mb-0">
                         <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 items-center">
                           {presets.map((preset) => {
                             const active = preQueryPresets.includes(preset.id)
+                            const activeIdx = activeInGroup.indexOf(preset)
                             return (
-                              <PresetPill
-                                key={preset.id}
-                                label={preset.label}
-                                active={active}
-                                isDark={isDark}
-                                disabled={locked}
-                                onClick={() => setPreQueryPresets((prev) => active ? prev.filter((id) => id !== preset.id) : [...prev, preset.id])}
-                                onMouseEnter={() => setHoveredPQPreset(preset.id)}
-                                onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
-                                onMouseLeave={() => { setHoveredPQPreset(null); setPresetTooltipPos(null) }}
-                              />
+                              <span key={preset.id} className="contents">
+                                {active && activeIdx > 0 && (
+                                  <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                                )}
+                                <PresetPill
+                                  label={preset.label}
+                                  active={active}
+                                  isDark={isDark}
+                                  disabled={locked}
+                                  onClick={() => setPreQueryPresets((prev) => active ? prev.filter((id) => id !== preset.id) : [...prev, preset.id])}
+                                  onMouseEnter={() => setHoveredPQPreset(preset.id)}
+                                  onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
+                                  onMouseLeave={() => { setHoveredPQPreset(null); setPresetTooltipPos(null) }}
+                                />
+                              </span>
                             )
                           })}
                         </div>
@@ -1358,71 +1374,89 @@ export default function Home() {
                 </CardSection>
 
                 {/* Filters card */}
-                <CardSection isDark={isDark} className="space-y-1.5">
+                <CardSection isDark={isDark} className="space-y-0">
                   {preQueryFilters.map((f, i) => (
-                    <div key={i} className="flex items-center gap-1 min-w-0">
-                      <select
-                        value={f.column}
-                        disabled={locked}
-                        onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, column: e.target.value } : x))}
-                        className={`flex-1 min-w-0 rounded border h-[26px] text-xs outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {activeFilterColumns.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <button
-                        disabled={locked}
-                        onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, negate: !x.negate } : x))}
-                        className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                          f.negate
-                            ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
-                            : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
-                        }`}
-                      >
-                        NOT
-                      </button>
-                      <select
-                        value={f.operator}
-                        disabled={locked}
-                        onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, operator: e.target.value as 'contains' | 'equals' | 'empty' } : x))}
-                        className={`rounded border px-1 py-1 outline-none text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-700'
-                        }`}
-                      >
-                        <option value="contains">contains</option>
-                        <option value="equals">equals</option>
-                        <option value="empty">empty</option>
-                      </select>
-                      {f.operator !== 'empty' && (
-                        <input
-                          type="text"
-                          value={f.value}
+                    <div key={i}>
+                      {i > 0 && (
+                        <div className="flex justify-center py-0.5">
+                          <button
+                            disabled={locked}
+                            onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, joinOr: !x.joinOr } : x))}
+                            className={`text-[9px] font-bold tracking-wide rounded px-1.5 py-px border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                              f.joinOr
+                                ? isDark ? 'text-violet-400 border-violet-500/40 bg-violet-500/10' : 'text-violet-600 border-violet-400/50 bg-violet-50'
+                                : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
+                            }`}
+                            data-tooltip={f.joinOr ? 'OR — match either condition' : 'AND — match both conditions'}
+                          >
+                            {f.joinOr ? 'OR' : 'AND'}
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 min-w-0">
+                        <select
+                          value={f.column}
                           disabled={locked}
-                          onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))}
-                          placeholder="value…"
-                          className={`flex-1 min-w-0 rounded border px-1.5 py-1 outline-none text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
-                            isDark ? 'bg-white/5 border-white/10 text-gray-300 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-700 placeholder-gray-400'
+                          onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, column: e.target.value } : x))}
+                          className={`flex-1 min-w-0 rounded border h-[26px] text-xs outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-700'
                           }`}
-                        />
-                      )}
-                      {!locked && (
-                        <button
-                          onClick={() => setPreQueryFilters(preQueryFilters.filter((_, idx) => idx !== i))}
-                          className={`flex-shrink-0 ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
+                          {activeFilterColumns.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <button
+                          disabled={locked}
+                          onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, negate: !x.negate } : x))}
+                          className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            f.negate
+                              ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
+                              : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
+                          }`}
+                        >
+                          NOT
                         </button>
-                      )}
+                        <select
+                          value={f.operator}
+                          disabled={locked}
+                          onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, operator: e.target.value as 'contains' | 'equals' | 'empty' } : x))}
+                          className={`rounded border px-1 py-1 outline-none text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-700'
+                          }`}
+                        >
+                          <option value="contains">contains</option>
+                          <option value="equals">equals</option>
+                          <option value="empty">empty</option>
+                        </select>
+                        {f.operator !== 'empty' && (
+                          <input
+                            type="text"
+                            value={f.value}
+                            disabled={locked}
+                            onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))}
+                            placeholder="value…"
+                            className={`flex-1 min-w-0 rounded border px-1.5 py-1 outline-none text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isDark ? 'bg-white/5 border-white/10 text-gray-300 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-700 placeholder-gray-400'
+                            }`}
+                          />
+                        )}
+                        {!locked && (
+                          <button
+                            onClick={() => setPreQueryFilters(preQueryFilters.filter((_, idx) => idx !== i))}
+                            className={`flex-shrink-0 ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {!locked && (
                     <button
                       onClick={() => {
                         const col = activeFilterColumns.length > 0 ? activeFilterColumns[0] : ''
-                        setPreQueryFilters([...preQueryFilters, { column: col, operator: 'contains', negate: false, value: '' }])
+                        setPreQueryFilters([...preQueryFilters, { column: col, operator: 'contains', negate: false, value: '', joinOr: false }])
                       }}
                       className={`flex items-center text-[10px] font-medium h-6 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                     >
