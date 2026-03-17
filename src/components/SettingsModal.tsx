@@ -106,6 +106,9 @@ export default function SettingsModal({
   const [settingsOpen, setSettingsOpen] = useState(() => {
     try { return localStorage.getItem('pdm_section_settings') !== '0' } catch { return true }
   })
+  const [dataOpen, setDataOpen] = useState(() => {
+    try { return localStorage.getItem('pdm_section_data') !== '0' } catch { return true }
+  })
   const [aiOpen, setAiOpen] = useState(() => {
     try { return localStorage.getItem('pdm_section_ai') === '1' } catch { return false }
   })
@@ -121,17 +124,19 @@ export default function SettingsModal({
     try { localStorage.setItem(`pdm_section_${key}`, next ? '1' : '0') } catch {}
   }
 
-  const allOpen = settingsOpen && usageOpen && aiOpen && savedOpen
+  const allOpen = settingsOpen && dataOpen && usageOpen && aiOpen && savedOpen
 
   const toggleAll = () => {
     const next = !allOpen
     setSettingsOpen(next)
+    setDataOpen(next)
     setAiOpen(next)
     setSavedOpen(next)
     if (usageOpen !== next) onUsageToggle()
     const v = next ? '1' : '0'
     try {
       localStorage.setItem('pdm_section_settings', v)
+      localStorage.setItem('pdm_section_data', v)
       localStorage.setItem('pdm_section_ai', v)
       localStorage.setItem('pdm_section_saved', v)
     } catch {}
@@ -348,147 +353,165 @@ export default function SettingsModal({
                 </div>
               )}
 
-              <div>
-                <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Query Parameters</div>
-                <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
-                  <div>
-                    <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${t.label}`}>Default Fields</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => onFieldsModal('global')}
-                        className={`text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
-                      >
-                        Global ({globalVisibleCount})
-                      </button>
-                      <button
-                        onClick={() => onFieldsModal('list')}
-                        className={`text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
-                      >
-                        List ({listColumns.length})
-                      </button>
-                      <button
-                        onClick={() => onFieldsModal('popup')}
-                        className={`text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
-                      >
-                        Popup ({popupColumns.length})
-                      </button>
-                    </div>
-                    <p className={`text-[10px] mt-1 ${t.label}`}>
-                      Global controls hidden fields. List and Popup control visible fields for each view.
-                    </p>
                   </div>
+                )}
+              </div>
+            </div>
 
-                  {canUsePresets(userTier) ? (
+            {/* Data Settings */}
+            <div className={`border-t ${t.sectionBorder}`}>
+              <div className="px-4 py-3">
+                <button
+                  onClick={() => toggleSection('data', setDataOpen, dataOpen)}
+                  className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.chevronBtn}`}
+                >
+                  <span>Data Settings</span>
+                  <svg className={`w-3 h-3 transition-transform ${dataOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {dataOpen && (
+                  <div className="mt-2 space-y-3">
                     <div>
-                      <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${t.label}`}>Default Quick Filters</div>
-                      <div className="space-y-1.5">
-                        {PRESET_GROUPS.map((group) => {
-                          const presets = PRESET_FILTERS.filter((p) => p.group === group)
-                          const activeInGroup = presets.filter((p) => defaultPresets.includes(p.id))
-                          return (
-                            <div key={group} className="mb-1 last:mb-0">
-                              <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
-                              <div className="flex flex-wrap gap-1 items-center">
-                                {presets.map((preset) => {
-                                  const active = defaultPresets.includes(preset.id)
-                                  const activeIdx = activeInGroup.indexOf(preset)
-                                  return (
-                                    <span key={preset.id} className="contents">
-                                      {active && activeIdx > 0 && (
-                                        <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
-                                      )}
-                                      <PresetPill
-                                        label={preset.label}
-                                        active={active}
-                                        isDark={isDark}
-                                        onClick={() => onDefaultPresetsChange(
-                                          active
-                                            ? defaultPresets.filter((id) => id !== preset.id)
-                                            : [...defaultPresets, preset.id]
-                                        )}
-                                      />
-                                    </span>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          )
-                        })}
-                        {defaultPresets.length > 0 && (
+                      <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Default Fields</div>
+                      <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
+                        <div className="grid grid-cols-3 gap-2">
                           <button
-                            onClick={() => onDefaultPresetsChange([])}
-                            className={`text-[10px] font-medium mt-1 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                            onClick={() => onFieldsModal('global')}
+                            className={`text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
                           >
-                            Clear all
+                            Global ({globalVisibleCount})
                           </button>
-                        )}
+                          <button
+                            onClick={() => onFieldsModal('list')}
+                            className={`text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
+                          >
+                            List ({listColumns.length})
+                          </button>
+                          <button
+                            onClick={() => onFieldsModal('popup')}
+                            className={`text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
+                          >
+                            Popup ({popupColumns.length})
+                          </button>
+                        </div>
                         <p className={`text-[10px] ${t.label}`}>
-                          These quick filters will be automatically selected as pre-search filters on every new search.
+                          Global controls hidden fields. List and Popup control visible fields for each view.
                         </p>
                       </div>
                     </div>
-                  ) : (
-                    <p className={`text-[10px] ${t.label}`}>
-                      Default quick filters are managed automatically on your current plan.
-                    </p>
-                  )}
-                </div>
-              </div>
 
-              {(userTier === 'individual' || userTier === 'enterprise') && (() => {
-                const maxForTier = userTier === 'enterprise' ? MAX_ENTERPRISE_RESULT_LIMIT : TIER_LIMITS[userTier].resultsPerQuery
-                const currentValue = customResultLimit ?? getResultLimit(userTier)
-                const handleChange = (v: number) => {
-                  if (isNaN(v) || v < 1) { onCustomResultLimitChange(null); return }
-                  onCustomResultLimitChange(Math.min(v, maxForTier))
-                }
-                return (
-                  <div>
-                    <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Result Limit</div>
-                    <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
-                      <input
-                        type="range"
-                        min={1}
-                        max={maxForTier}
-                        step={1}
-                        value={currentValue}
-                        onChange={(e) => handleChange(parseInt(e.target.value, 10))}
-                        className="pdm-range"
-                        style={{ background: `linear-gradient(to right, #7c3aed ${maxForTier > 1 ? ((currentValue - 1) / (maxForTier - 1)) * 100 : 100}%, ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} ${maxForTier > 1 ? ((currentValue - 1) / (maxForTier - 1)) * 100 : 100}%)` }}
-                      />
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min={1}
-                          max={maxForTier}
-                          value={currentValue}
-                          onChange={(e) => handleChange(parseInt(e.target.value, 10))}
-                          className={`flex-1 min-w-0 rounded-md border px-2 py-1 text-[11px] outline-none transition-colors ${
-                            isDark
-                              ? 'bg-white/5 border-white/10 text-white focus:border-white/30'
-                              : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'
-                          }`}
-                        />
-                        <button
-                          disabled={currentValue === maxForTier}
-                          onClick={() => onCustomResultLimitChange(maxForTier)}
-                          className={`flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                            isDark ? 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                          }`}
-                        >
-                          Max
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[10px] ${t.label}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
-                        {currentValue > 50_000 && (
-                          <span className="text-[10px] font-medium text-amber-500">⚠ May be slow</span>
+                    <div>
+                      <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Default Quick Filters</div>
+                      <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
+                        {canUsePresets(userTier) ? (
+                          <div className="space-y-1.5">
+                            {PRESET_GROUPS.map((group) => {
+                              const presets = PRESET_FILTERS.filter((p) => p.group === group)
+                              const activeInGroup = presets.filter((p) => defaultPresets.includes(p.id))
+                              return (
+                                <div key={group} className="mb-1 last:mb-0">
+                                  <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
+                                  <div className="flex flex-wrap gap-1 items-center">
+                                    {presets.map((preset) => {
+                                      const active = defaultPresets.includes(preset.id)
+                                      const activeIdx = activeInGroup.indexOf(preset)
+                                      return (
+                                        <span key={preset.id} className="contents">
+                                          {active && activeIdx > 0 && (
+                                            <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                                          )}
+                                          <PresetPill
+                                            label={preset.label}
+                                            active={active}
+                                            isDark={isDark}
+                                            onClick={() => onDefaultPresetsChange(
+                                              active
+                                                ? defaultPresets.filter((id) => id !== preset.id)
+                                                : [...defaultPresets, preset.id]
+                                            )}
+                                          />
+                                        </span>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {defaultPresets.length > 0 && (
+                              <button
+                                onClick={() => onDefaultPresetsChange([])}
+                                className={`text-[10px] font-medium mt-1 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                              >
+                                Clear all
+                              </button>
+                            )}
+                            <p className={`text-[10px] ${t.label}`}>
+                              These quick filters will be automatically selected as pre-search filters on every new search.
+                            </p>
+                          </div>
+                        ) : (
+                          <p className={`text-[10px] ${t.label}`}>
+                            Default quick filters are managed automatically on your current plan.
+                          </p>
                         )}
                       </div>
                     </div>
-                  </div>
-                )
-              })()}
+
+                    {(userTier === 'individual' || userTier === 'enterprise') && (() => {
+                      const maxForTier = userTier === 'enterprise' ? MAX_ENTERPRISE_RESULT_LIMIT : TIER_LIMITS[userTier].resultsPerQuery
+                      const currentValue = customResultLimit ?? getResultLimit(userTier)
+                      const handleChange = (v: number) => {
+                        if (isNaN(v) || v < 1) { onCustomResultLimitChange(null); return }
+                        onCustomResultLimitChange(Math.min(v, maxForTier))
+                      }
+                      return (
+                        <div>
+                          <div className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Result Limit</div>
+                          <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
+                            <input
+                              type="range"
+                              min={1}
+                              max={maxForTier}
+                              step={1}
+                              value={currentValue}
+                              onChange={(e) => handleChange(parseInt(e.target.value, 10))}
+                              className="pdm-range"
+                              style={{ background: `linear-gradient(to right, #7c3aed ${maxForTier > 1 ? ((currentValue - 1) / (maxForTier - 1)) * 100 : 100}%, ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'} ${maxForTier > 1 ? ((currentValue - 1) / (maxForTier - 1)) * 100 : 100}%)` }}
+                            />
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={1}
+                                max={maxForTier}
+                                value={currentValue}
+                                onChange={(e) => handleChange(parseInt(e.target.value, 10))}
+                                className={`flex-1 min-w-0 rounded-md border px-2 py-1 text-[11px] outline-none transition-colors ${
+                                  isDark
+                                    ? 'bg-white/5 border-white/10 text-white focus:border-white/30'
+                                    : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'
+                                }`}
+                              />
+                              <button
+                                disabled={currentValue === maxForTier}
+                                onClick={() => onCustomResultLimitChange(maxForTier)}
+                                className={`flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  isDark ? 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                                }`}
+                              >
+                                Max
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] ${t.label}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
+                              {currentValue > 50_000 && (
+                                <span className="text-[10px] font-medium text-amber-500">⚠ May be slow</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>

@@ -1735,7 +1735,7 @@ export default function Home() {
         onDeleteAccount={handleDeleteAccount}
         onSignOut={handleSignOut}
         onSignIn={() => setAuthOpen(true)}
-        prefsSaved={prefsSaved}
+        prefsSaved={prefsSaved && !fieldsModalTab}
         searchCount={searchCount}
         aiOverviewCount={aiOverviewCount}
         aiOverviewsList={aiOverviewsList}

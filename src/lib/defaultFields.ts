@@ -1,6 +1,7 @@
 export const DEFAULT_GLOBAL_VISIBLE_COLS = [
   'Dénomination de l\'unité légale',
   'SIRET',
+  'Section de l\'établissement',
   'Activité principale de l\'établissement',
   'Etat administratif de l\'établissement',
   'Catégorie juridique de l\'unité légale',
@@ -12,7 +13,7 @@ export const DEFAULT_GLOBAL_VISIBLE_COLS = [
 
 export const DEFAULT_LIST_COLS = [
   'Dénomination de l\'unité légale',
-  'Activité principale de l\'établissement',
+  'Section de l\'établissement',
   'Code postal de l\'établissement',
   'Commune de l\'établissement',
 ]
@@ -20,7 +21,7 @@ export const DEFAULT_LIST_COLS = [
 export const DEFAULT_POPUP_COLS = [
   'Dénomination de l\'unité légale',
   'SIRET',
-  'Activité principale de l\'établissement',
+  'Section de l\'établissement',
   'Commune de l\'établissement',
 ]
 

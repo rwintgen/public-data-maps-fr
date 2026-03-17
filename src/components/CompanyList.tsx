@@ -531,8 +531,7 @@ function CompanyList({
       )}
 
       {showPresets && (
-        <CardSection isDark={isDark} className="mb-2">
-          {PRESET_GROUPS.map((group) => {
+        <CardSection isDark={isDark} className="mb-2">          {PRESET_GROUPS.map((group) => {
             const presets = PRESET_FILTERS.filter((p) => p.group === group)
             const activeInGroup = presets.filter((p) => activePresets.includes(p.id))
             return (
@@ -785,7 +784,7 @@ function CompanyList({
           {filters.map((f, i) => (
             <div key={i}>
               {i > 0 && (
-                <div className="flex justify-center py-0.5">
+                <div className="flex justify-start pl-1 py-0.5">
                   <button
                     onClick={() => updateFilter(i, { joinOr: !f.joinOr })}
                     className={`text-[9px] font-bold tracking-wide rounded px-1.5 py-px border transition-colors ${

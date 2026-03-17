@@ -381,7 +381,7 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] AND/OR logic between filters
 - [x] Default pre-search quick filters
 - [x] Default hidden fields (keep only most relevant ones)
-- [ ] Regroup default pre-search quick filters and default hidden fields in new "Query parameters" settings section
+- [x] Split settings modal into "Settings" and "Data Settings" sections
 - [ ] Import full SIRENE dataset into Cloud SQL + Create indexes on pre-search quick filters
 - [ ] Create private CRM dashboard
 - [ ] Add more auth features (forgot passsword, SSO sign-in, company sign in)
