@@ -248,6 +248,7 @@ export async function GET() {
 
 /** POST: accepts a GeoJSON geometry and an optional result limit, returns companies within that area. Streams results as SSE. */
 export async function POST(req: NextRequest) {
+  const t0 = Date.now()
   try {
     const { geometry, limit: requestedLimit, presets: rawPresets, filters: rawFilters, connectorId, connectorOrgId, visibleFields: rawVisibleFields } = await req.json()
     const limit = typeof requestedLimit === 'number' && requestedLimit > 0
@@ -289,8 +290,10 @@ export async function POST(req: NextRequest) {
 
     let searchCountAfter: number | null = null
     if (token) {
+      const tAuth = Date.now()
       try {
         searchCountAfter = await enforceAndIncrementSearchCount(token)
+        console.log(`[search] auth+usage enforcement: ${Date.now() - tAuth}ms`)
       } catch (err: any) {
         if (err.code === 'monthly_limit_reached') {
           return NextResponse.json(
@@ -319,8 +322,10 @@ export async function POST(req: NextRequest) {
       return { lat: row.lat, lon: row.lon, fields: projected }
     }
 
+    const tPool = Date.now()
     const pool = await getPool()
     const client = await pool.connect()
+    console.log(`[search] pool+connect: ${Date.now() - tPool}ms (total: ${Date.now() - t0}ms)`)
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -379,31 +384,45 @@ export async function POST(req: NextRequest) {
             const wherePresets = presetClauses.length > 0 ? ` AND ${presetClauses.join(' AND ')}` : ''
             const { clauses: filterClauses, params: filterParams } = buildFilterSQL(filters, 3)
             const whereFilters = filterClauses.length > 0 ? ` AND ${filterClauses.join(' AND ')}` : ''
+
             const whereFull = `WHERE ST_Contains(ST_GeomFromGeoJSON($1), geom)${wherePresets}${whereFilters}`
 
-            // Instant count: run a fast COUNT(*) first so the client knows the real total
-            const countResult = await client.query(
-              `SELECT COUNT(*) AS cnt FROM establishments ${whereFull}`,
-              [geoJson, ...filterParams]
-            )
-            const totalMatching = parseInt(countResult.rows[0].cnt, 10)
-            controller.enqueue(sseSend({ type: 'count', total: totalMatching }))
-
-            const streamLimit = Math.min(effectiveLimit, totalMatching)
-            controller.enqueue(sseSend({ type: 'start', total: streamLimit }))
-
+            const tCursor = Date.now()
             await client.query('BEGIN')
             await client.query(
               `DECLARE search_cursor NO SCROLL CURSOR FOR SELECT lat, lon, fields FROM establishments ${whereFull} LIMIT $2`,
               [geoJson, effectiveLimit, ...filterParams]
             )
+            console.log(`[search] DECLARE CURSOR: ${Date.now() - tCursor}ms (total: ${Date.now() - t0}ms)`)
+
+            controller.enqueue(sseSend({ type: 'start', total: effectiveLimit }))
+
+            let totalMatching: number | null = null
+            const countPromise = (async () => {
+              const tCount = Date.now()
+              const countClient = await pool.connect()
+              try {
+                const countResult = await countClient.query(
+                  `SELECT COUNT(*) AS cnt FROM establishments ${whereFull}`,
+                  [geoJson, ...filterParams]
+                )
+                totalMatching = parseInt(countResult.rows[0].cnt, 10)
+                console.log(`[search] COUNT(*): ${totalMatching} in ${Date.now() - tCount}ms (total: ${Date.now() - t0}ms)`)
+                try { controller.enqueue(sseSend({ type: 'count', total: totalMatching })) } catch {}
+              } finally {
+                countClient.release()
+              }
+            })()
 
             const BATCH_SIZE = 5000
             let loaded = 0
+            let batchNum = 0
 
             while (loaded < effectiveLimit) {
               const fetchSize = Math.min(BATCH_SIZE, effectiveLimit - loaded)
+              const tBatch = Date.now()
               const batch = await client.query(`FETCH ${fetchSize} FROM search_cursor`)
+              batchNum++
               if (batch.rows.length === 0) break
 
               if (!dbColumnsCache && batch.rows.length > 0) {
@@ -411,6 +430,7 @@ export async function POST(req: NextRequest) {
               }
 
               loaded += batch.rows.length
+              console.log(`[search] FETCH batch #${batchNum}: ${batch.rows.length} rows in ${Date.now() - tBatch}ms (loaded: ${loaded}, total: ${Date.now() - t0}ms)`)
               try {
                 controller.enqueue(sseSend({
                   type: 'batch',
@@ -420,8 +440,10 @@ export async function POST(req: NextRequest) {
               } catch { break }
             }
 
-            const truncated = loaded >= effectiveLimit && totalMatching > effectiveLimit
-            console.log(`[postgis-stream] Streamed ${loaded}/${totalMatching} establishments${truncated ? ' (truncated)' : ''}${presets.length ? ` (quick-filters: ${presets.join(',')})` : ''}${filters.length ? ` (filters: ${filters.length})` : ''} (limit: ${effectiveLimit}).`)
+            await countPromise.catch(() => {})
+
+            const truncated = loaded >= effectiveLimit && (totalMatching === null || totalMatching > effectiveLimit)
+            console.log(`[search] COMPLETE: ${loaded}/${totalMatching ?? '?'} in ${Date.now() - t0}ms${truncated ? ' (truncated)' : ''}${presets.length ? ` presets=${presets.join(',')}` : ''}${filters.length ? ` filters=${filters.length}` : ''} limit=${effectiveLimit}`)
 
             controller.enqueue(sseSend({
               type: 'complete',

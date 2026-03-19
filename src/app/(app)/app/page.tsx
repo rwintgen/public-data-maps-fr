@@ -59,59 +59,6 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [searchExpanded, setSearchExpanded] = useState(false)
   const isSigningIn = useRef(false)
-
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const dragStartY = useRef(0)
-  const dragDelta = useRef(0)
-  const dragging = useRef(false)
-  const dragTimestamp = useRef(0)
-
-  const handleDragStart = useCallback((e: React.TouchEvent) => {
-    const scrollEl = scrollRef.current
-    if (scrollEl && scrollEl.scrollTop > 0) return
-    dragStartY.current = e.touches[0].clientY
-    dragDelta.current = 0
-    dragging.current = true
-    dragTimestamp.current = Date.now()
-    if (sidebarRef.current) sidebarRef.current.style.transition = 'none'
-  }, [])
-
-  const handleDragMove = useCallback((e: React.TouchEvent) => {
-    if (!dragging.current) return
-    const delta = e.touches[0].clientY - dragStartY.current
-    if (delta < 0) { dragDelta.current = 0; return }
-    dragDelta.current = delta
-    if (sidebarRef.current) {
-      sidebarRef.current.style.transform = `translateY(${delta}px)`
-      sidebarRef.current.style.willChange = 'transform'
-    }
-    if (backdropRef.current) {
-      const sidebarH = sidebarRef.current?.offsetHeight ?? 1
-      backdropRef.current.style.opacity = String(Math.max(0, 1 - delta / sidebarH))
-    }
-  }, [])
-
-  const handleDragEnd = useCallback(() => {
-    if (!dragging.current) return
-    dragging.current = false
-    const sidebar = sidebarRef.current
-    if (sidebar) {
-      sidebar.style.transition = ''
-      sidebar.style.willChange = ''
-    }
-    if (backdropRef.current) backdropRef.current.style.opacity = ''
-    const velocity = dragDelta.current / Math.max(1, Date.now() - dragTimestamp.current)
-    const threshold = (sidebar?.offsetHeight ?? 400) * 0.3
-    if (dragDelta.current > threshold || velocity > 0.5) {
-      setSidebarOpen(false)
-      if (sidebar) sidebar.style.transform = ''
-    } else {
-      if (sidebar) sidebar.style.transform = ''
-    }
-    dragDelta.current = 0
-  }, [])
   const profileLoaded = useRef(false)
   const hasExplicitHiddenPrefs = useRef(false)
   const preQueryPresetsInit = useRef(false)
@@ -182,14 +129,6 @@ export default function Home() {
   const clusterAbort = useRef<AbortController | null>(null)
 
   const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark'
-
-  useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 767px)').matches
-    if (isMobile && sidebarOpen) {
-      document.body.style.overflow = 'hidden'
-      return () => { document.body.style.overflow = '' }
-    }
-  }, [sidebarOpen])
 
   useEffect(() => {
     const hidden = new Set(hiddenFields)
@@ -451,30 +390,22 @@ export default function Home() {
   const [orgSetupPrompt, setOrgSetupPrompt] = useState(false)
 
   const fetchClusters = useCallback(async (bounds: { west: number; south: number; east: number; north: number; zoom: number }) => {
-    console.log('[fetchClusters] called', { zoom: bounds.zoom, bbox: `${bounds.west.toFixed(2)},${bounds.south.toFixed(2)},${bounds.east.toFixed(2)},${bounds.north.toFixed(2)}` })
     if (clusterAbort.current) clusterAbort.current.abort()
     const controller = new AbortController()
     clusterAbort.current = controller
     try {
       const presetStr = preQueryPresets.length > 0 ? `&presets=${preQueryPresets.join(',')}` : ''
-      const url = `/api/clusters?bbox=${bounds.west},${bounds.south},${bounds.east},${bounds.north}&zoom=${bounds.zoom}${presetStr}`
-      console.log('[fetchClusters] fetching:', url)
-      const t0 = performance.now()
-      const res = await fetch(url, { signal: controller.signal })
-      const elapsed = Math.round(performance.now() - t0)
-      console.log(`[fetchClusters] response status=${res.status} in ${elapsed}ms`)
-      if (!res.ok) {
-        const body = await res.text()
-        console.warn('[fetchClusters] error body:', body)
-        return
-      }
+      const res = await fetch(
+        `/api/clusters?bbox=${bounds.west},${bounds.south},${bounds.east},${bounds.north}&zoom=${bounds.zoom}${presetStr}`,
+        { signal: controller.signal }
+      )
+      if (!res.ok) return
       const data = await res.json()
       if (!controller.signal.aborted) {
-        console.log(`[fetchClusters] zoom=${bounds.zoom} → ${data.clusters?.length ?? 0} cells, total=${data.total}`)
         setViewportClusters(data.clusters ?? [])
       }
     } catch (err: any) {
-      if (err.name !== 'AbortError') console.warn('[fetchClusters] error:', err)
+      if (err.name !== 'AbortError') console.warn('[clusters] fetch error:', err)
     }
   }, [preQueryPresets])
 
@@ -1079,7 +1010,7 @@ export default function Home() {
           restoreGeometry={restoreGeometry}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          clusters={searchArea ? [] : viewportClusters}
+          clusters={viewportClusters}
           onViewportChange={fetchClusters}
         />
         {isLoading && (
@@ -1112,7 +1043,6 @@ export default function Home() {
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          ref={backdropRef}
           className="fixed inset-0 z-[1199] bg-black/40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -1139,7 +1069,6 @@ export default function Home() {
 
       {/* Sidebar */}
       <div
-          ref={sidebarRef}
           className={`
             ${d.sidebar}
             fixed inset-x-0 bottom-0 z-[1200] rounded-t-2xl shadow-2xl
@@ -1152,15 +1081,10 @@ export default function Home() {
           `}
         >
           {/* Mobile drag handle */}
-          <div
-            className="md:hidden flex justify-center pt-3 pb-2"
-            onTouchStart={handleDragStart}
-            onTouchMove={handleDragMove}
-            onTouchEnd={handleDragEnd}
-          >
+          <div className="md:hidden flex justify-center pt-2 pb-1">
             <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`} />
           </div>
-          <div ref={scrollRef} className="h-[85dvh] md:h-full w-full md:min-w-[380px] md:w-[380px] flex flex-col overflow-y-auto">
+          <div className="h-[85dvh] md:h-full w-full md:min-w-[380px] md:w-[380px] flex flex-col">
         {isTruncated && resultLimit !== null && (
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400">
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1188,12 +1112,7 @@ export default function Home() {
           </div>
         ))}
         {/* Header */}
-        <div
-          className={`px-5 pt-5 pb-4 border-b ${d.headerBorder}`}
-          onTouchStart={handleDragStart}
-          onTouchMove={handleDragMove}
-          onTouchEnd={handleDragEnd}
-        >
+        <div className={`px-5 pt-5 pb-4 border-b ${d.headerBorder}`}>
           <div className="flex items-center justify-between">
             <img src="/brand/logo-full.png" alt="Public Data Maps" className={`h-12 w-auto ${isDark ? 'invert' : ''}`} />
 
@@ -1431,7 +1350,7 @@ export default function Home() {
                             return (
                               <span key={preset.id} className="contents">
                                 {active && activeIdx > 0 && (
-                                  <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                                  <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
                                 )}
                                 <PresetPill
                                   label={preset.label}
@@ -1457,7 +1376,7 @@ export default function Home() {
                         {(orgRole === 'owner' || orgRole === 'admin') && (
                           <a
                             href="/org#settings"
-                            className={`text-xs md:text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                           >
                             Manage
                           </a>
@@ -1493,7 +1412,7 @@ export default function Home() {
                             setPqCustomForm(!pqCustomForm)
                             if (!pqCustomForm && activeFilterColumns.length > 0) setPqCustomColumn(activeFilterColumns[0])
                           }}
-                          className={`text-xs md:text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                          className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                         >
                           {pqCustomForm ? 'Cancel' : '+ New'}
                         </button>
@@ -1522,7 +1441,7 @@ export default function Home() {
                                     setCustomPresets(customPresets.filter((x) => x.id !== cp.id))
                                     setPreQueryCustomIds((prev) => prev.filter((id) => id !== cp.id))
                                   }}
-                                  className={`opacity-100 md:opacity-0 md:group-hover/custom:opacity-100 transition-opacity w-3.5 h-3.5 rounded-full flex items-center justify-center ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+                                  className={`opacity-0 group-hover/custom:opacity-100 transition-opacity w-3.5 h-3.5 rounded-full flex items-center justify-center ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                                 >
                                   <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
@@ -1551,7 +1470,7 @@ export default function Home() {
                           </select>
                           <button
                             onClick={() => setPqCustomNegate(!pqCustomNegate)}
-                            className={`flex-shrink-0 text-xs md:text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors ${
+                            className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors ${
                               pqCustomNegate
                                 ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
                                 : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
@@ -1595,7 +1514,7 @@ export default function Home() {
                             setPqCustomNegate(false)
                             setPqCustomForm(false)
                           }}
-                          className={`text-xs md:text-[10px] font-semibold py-1 px-3 rounded-lg transition-all disabled:opacity-40 ${
+                          className={`text-[10px] font-semibold py-1 px-3 rounded-lg transition-all disabled:opacity-40 ${
                             isDark ? 'bg-white/10 text-gray-200 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
@@ -1623,7 +1542,7 @@ export default function Home() {
                           <button
                             disabled={locked}
                             onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, joinOr: !x.joinOr } : x))}
-                            className={`text-[11px] md:text-[9px] font-bold tracking-wide rounded px-1.5 py-px border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`text-[9px] font-bold tracking-wide rounded px-1.5 py-px border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               isDark
                                 ? 'text-violet-300 border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20'
                                 : 'text-violet-700 border-violet-400/60 bg-violet-50 hover:bg-violet-100'
@@ -1648,7 +1567,7 @@ export default function Home() {
                         <button
                           disabled={locked}
                           onClick={() => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, negate: !x.negate } : x))}
-                          className={`flex-shrink-0 text-xs md:text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          className={`flex-shrink-0 text-[10px] font-bold rounded px-1.5 py-0.5 border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                             f.negate
                               ? isDark ? 'text-white border-white/30 bg-white/10' : 'text-gray-900 border-gray-400 bg-gray-100'
                               : isDark ? 'text-gray-600 border-white/10 hover:text-gray-400' : 'text-gray-400 border-gray-200 hover:text-gray-600'
@@ -1699,7 +1618,7 @@ export default function Home() {
                         const col = activeFilterColumns.length > 0 ? activeFilterColumns[0] : ''
                         setPreQueryFilters([...preQueryFilters, { column: col, operator: 'contains', negate: false, value: '', joinOr: false }])
                       }}
-                      className={`flex items-center text-xs md:text-[10px] font-medium h-6 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`flex items-center text-[10px] font-medium h-6 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                     >
                       + Add filter
                     </button>
@@ -1736,7 +1655,7 @@ export default function Home() {
                             value={currentValue}
                             disabled={locked}
                             onChange={(e) => handleChange(parseInt(e.target.value, 10))}
-                            className={`flex-1 min-w-0 rounded-md border px-2 py-1 text-xs md:text-[11px] outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`flex-1 min-w-0 rounded-md border px-2 py-1 text-[11px] outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               isDark
                                 ? 'bg-white/5 border-white/10 text-white focus:border-white/30'
                                 : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'
@@ -1745,7 +1664,7 @@ export default function Home() {
                           <button
                             disabled={locked || currentValue === maxForTier}
                             onClick={() => setCustomResultLimit(maxForTier)}
-                            className={`flex-shrink-0 text-xs md:text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               isDark ? 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                             }`}
                           >
@@ -1753,9 +1672,9 @@ export default function Home() {
                           </button>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs md:text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
+                          <span className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
                           {currentValue > 50_000 && (
-                            <span className="text-xs md:text-[10px] font-medium text-amber-500">⚠ May be slow</span>
+                            <span className="text-[10px] font-medium text-amber-500">⚠ May be slow</span>
                           )}
                         </div>
                       </div>
@@ -1764,7 +1683,7 @@ export default function Home() {
                 })()}
 
                 {locked && (
-                  <p className={`text-xs md:text-[10px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                  <p className={`text-[10px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                     Clear the drawn area to modify pre-search filters.
                   </p>
                 )}
@@ -1807,13 +1726,13 @@ export default function Home() {
 
         {/* Footer */}
         <div className={`flex-shrink-0 px-5 py-3 border-t flex items-center ${d.footer}`}>
-          <p className={`text-xs md:text-[10px] flex-1 ${d.footerText}`}>
+          <p className={`text-[10px] flex-1 ${d.footerText}`}>
             Data source: SIRENE (INSEE) &middot; Open Data
           </p>
           <button
             onClick={() => { if (!user) { setAuthOpen(true) } else { setExportOpen(true) } }}
             disabled={companies.length === 0}
-            className={`text-xs md:text-[10px] font-medium flex items-center gap-1 px-2.5 py-1.5 md:py-1 rounded-lg border transition-all ${
+            className={`text-[10px] font-medium flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-all ${
               companies.length > 0
                 ? isDark ? 'text-gray-300 border-white/15 hover:border-white/30 hover:bg-white/5' : 'text-violet-600 border-violet-300 hover:border-violet-400 hover:bg-violet-50'
                 : isDark ? 'text-gray-700 border-white/5 cursor-not-allowed' : 'text-gray-400 border-gray-200 cursor-not-allowed'
@@ -1826,10 +1745,10 @@ export default function Home() {
             Export
           </button>
         </div>
-        <div className={`flex-shrink-0 px-5 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] border-t flex items-center justify-center gap-3 ${d.footer}`}>
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className={`text-xs md:text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>Privacy Policy</a>
-          <span className={`text-xs md:text-[10px] ${isDark ? 'text-gray-700' : 'text-gray-300'}`}>&middot;</span>
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className={`text-xs md:text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>Terms of Service</a>
+        <div className={`flex-shrink-0 px-5 py-2 border-t flex items-center justify-center gap-3 ${d.footer}`}>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className={`text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>Privacy Policy</a>
+          <span className={`text-[10px] ${isDark ? 'text-gray-700' : 'text-gray-300'}`}>&middot;</span>
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className={`text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>Terms of Service</a>
         </div>
           </div>
         </div>
@@ -1866,7 +1785,7 @@ export default function Home() {
             >
               Resend verification email
             </button>
-            <button onClick={handleClose} className={`w-full text-xs md:text-[11px] font-medium py-1.5 transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
+            <button onClick={handleClose} className={`w-full text-[11px] font-medium py-1.5 transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
               Close
             </button>
           </div>
@@ -2062,8 +1981,8 @@ export default function Home() {
               <li>Cancel your subscription</li>
             </ul>
             <div className={`rounded-lg p-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-              <p className={`text-xs md:text-[11px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>If you cancel:</p>
-              <ul className={`text-xs md:text-[11px] mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-[11px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>If you cancel:</p>
+              <ul className={`text-[11px] mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 <li>• Access continues until the end of the billing period</li>
                 <li>• All your data and saved searches are preserved</li>
                 <li>• You can resubscribe at any time</li>

@@ -265,20 +265,17 @@ function ViewportTracker({ onViewportChange }: { onViewportChange: (bounds: View
   cbRef.current = onViewportChange
 
   useEffect(() => {
-    console.log('[ViewportTracker] mounted, attaching map listeners')
     const fire = () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         const b = map.getBounds()
-        const bounds = {
+        cbRef.current({
           west: b.getWest(),
           south: b.getSouth(),
           east: b.getEast(),
           north: b.getNorth(),
           zoom: map.getZoom(),
-        }
-        console.log('[ViewportTracker] firing onViewportChange', bounds)
-        cbRef.current(bounds)
+        })
       }, 300)
     }
     fire()
@@ -329,7 +326,6 @@ function ViewportClusterLayer({ clusters, isDark }: { clusters: ClusterPoint[]; 
     const g = layerRef.current
     if (!g) return
     g.clearLayers()
-    console.log(`[ViewportClusterLayer] rendering ${clusters.length} clusters`)
     for (const c of clusters) {
       if (c.count === 1) {
         L.circleMarker([c.lat, c.lng], {
@@ -545,7 +541,7 @@ export default function Map({
         />
       </FeatureGroup>
       {clusters && clusters.length > 0 && <ViewportClusterLayer clusters={clusters} isDark={isDark} />}
-      {onViewportChange ? <ViewportTracker onViewportChange={onViewportChange} /> : null}
+      {onViewportChange && <ViewportTracker onViewportChange={onViewportChange} />}
       <ClusteredMarkers companies={companies} onCompanySelect={onCompanySelect} onExpand={onExpand} popupColumns={popupColumns} recentMarkerClickRef={recentMarkerClickRef} />
       <SelectedMarkerPopup selectedCompany={selectedCompany} popupColumns={popupColumns} onExpand={onExpand} onDeselect={handleDeselect} />
       <MapDeselectHandler onCompanySelectRef={onCompanySelectRef} recentMarkerClickRef={recentMarkerClickRef} />
