@@ -6,9 +6,7 @@ html, body {
   height: 100%;
 }
 
-/* Support safe areas on iOS devices (notch/home indicator) */
 html {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -531,10 +529,6 @@ input[type=range].pdm-range::-moz-range-progress {
   }
   .leaflet-draw-toolbar li {
     margin-bottom: 8px;
-  }
-  /* Hide tooltip on touch devices */
-  [data-tooltip]::after {
-    display: none !important;
   }
   /* Larger Leaflet popups on mobile */
   .leaflet-popup-content {

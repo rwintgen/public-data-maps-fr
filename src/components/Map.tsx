@@ -7,11 +7,9 @@ import { useRef, useEffect, useCallback, useMemo } from 'react'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
-import { useAppLocale } from '@/lib/useAppLocale'
 
 const FRANCE_CENTER: [number, number] = [46.603354, 1.888334]
 const FRANCE_ZOOM = 6
-
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
 const defaultIcon = new L.Icon({
@@ -73,7 +71,6 @@ function ClusteredMarkers({
   const expandRef = useRef(onExpand)
   selectRef.current = onCompanySelect
   expandRef.current = onExpand
-  const { t: txt } = useAppLocale()
 
   useEffect(() => {
     const g = L.markerClusterGroup({
@@ -120,7 +117,7 @@ function ClusteredMarkers({
 
       let html = '<div class="min-w-[160px]">'
       if (popupColumns.length === 0) {
-        html += `<p class="text-xs italic text-gray-400">${txt.noColumnsSelected}</p>`
+        html += '<p class="text-xs italic text-gray-400">No columns selected</p>'
       } else {
         popupColumns.forEach((col, i) => {
           const val = esc(String(c.fields?.[col] ?? ''))
@@ -128,7 +125,7 @@ function ClusteredMarkers({
           else html += `<p class="text-xs text-gray-400 mt-0.5">${esc(col)}: ${val}</p>`
         })
       }
-      html += `<button class="marker-expand-btn mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 transition-colors">${txt.viewDetailsBtn} <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg></button>`
+      html += '<button class="marker-expand-btn mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 transition-colors">View details <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg></button>'
       html += '</div>'
       m.bindPopup(html)
       return m
@@ -141,7 +138,6 @@ function ClusteredMarkers({
 
 /** Renders and auto-zooms a larger marker with a popup for the selected company. */
 function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDeselect }: { selectedCompany: any; popupColumns: string[]; onExpand: (company: any) => void; onDeselect: () => void }) {
-  const { t: txt } = useAppLocale()
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
 
@@ -174,7 +170,7 @@ function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDesele
       <Popup>
         <div className="min-w-[180px]">
           {popupColumns.length === 0 ? (
-            <p className="text-xs italic text-gray-400">{txt.noColumnsSelected}</p>
+            <p className="text-xs italic text-gray-400">No columns selected</p>
           ) : (
             popupColumns.map((col, i) => {
               const val = selectedCompany.fields?.[col] ?? ''
@@ -186,7 +182,7 @@ function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDesele
                   onClick={() => onExpand(selectedCompany)}
                   className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 transition-colors"
                 >
-                  {txt.viewDetailsBtn}
+                  View details
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                 </button>
         </div>
@@ -283,7 +279,6 @@ export default function Map({
   const onSearchRef = useRef(onSearch)
   const onCompanySelectRef = useRef(onCompanySelect)
   const recentMarkerClickRef = useRef(false)
-  const { t: txt } = useAppLocale()
   onSearchRef.current = onSearch
   onCompanySelectRef.current = onCompanySelect
 
@@ -439,7 +434,7 @@ export default function Map({
       onClick={onToggleSidebar}
       style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 1100 }}
       className="hidden md:flex w-8 h-16 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 shadow-md items-center justify-center transition-colors"
-      data-tooltip={sidebarOpen ? txt.hidePanel : txt.showPanel} data-tooltip-pos="left"
+      data-tooltip={sidebarOpen ? 'Hide panel' : 'Show panel'} data-tooltip-pos="left"
     >
       <svg
         className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${sidebarOpen ? 'rotate-0' : 'rotate-180'}`}
@@ -454,7 +449,7 @@ export default function Map({
       <button
         onClick={onLocate}
         className="bg-white hover:bg-gray-50 border border-gray-300 shadow-md rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
-        data-tooltip={txt.goToLocation} data-tooltip-pos="right"
+        data-tooltip="Go to my location" data-tooltip-pos="right"
       >
         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -464,7 +459,7 @@ export default function Map({
       <button
         onClick={() => mapInstanceRef.current?.flyTo(FRANCE_CENTER, FRANCE_ZOOM, { animate: true, duration: 1 })}
         className="bg-white hover:bg-gray-50 border border-gray-300 shadow-md rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
-        data-tooltip={txt.resetFranceView} data-tooltip-pos="right"
+        data-tooltip="Reset to France view" data-tooltip-pos="right"
       >
         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

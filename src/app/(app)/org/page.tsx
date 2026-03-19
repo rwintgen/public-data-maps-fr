@@ -86,6 +86,7 @@ export default function OrgDashboard() {
   const [myRole, setMyRole] = useState<OrgRole | null>(null)
   const [userTier, setUserTier] = useState<string | null>(null)
   const [noOrg, setNoOrg] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const [createName, setCreateName] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
@@ -891,20 +892,48 @@ export default function OrgDashboard() {
   return (
     <div className={`h-screen flex flex-col ${t.bg}`}>
       {/* Top bar */}
-      <header className={`flex items-center justify-between px-6 py-3 border-b ${t.border} ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
-        <a href="/app" className={`flex items-center gap-2 text-sm font-medium transition-colors ${t.backBtn}`}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to map
-        </a>
+      <header className={`flex items-center justify-between px-4 md:px-6 py-3 border-b ${t.border} ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            className={`md:hidden p-1.5 rounded-lg transition-colors ${isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileNavOpen
+                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              }
+            </svg>
+          </button>
+          <a href="/app" className={`flex items-center gap-2 text-sm font-medium transition-colors ${t.backBtn}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="hidden md:inline">Back to map</span>
+          </a>
+        </div>
         <img src="/brand/logo-full.png" alt="Public Data Maps" className={`h-7 w-auto ${isDark ? 'invert' : ''}`} />
         <div className="w-20" />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Mobile nav backdrop */}
+        {mobileNavOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            onClick={() => setMobileNavOpen(false)}
+          />
+        )}
+
         {/* Sidebar nav */}
-        <nav className={`w-[200px] flex-shrink-0 border-r p-3 space-y-0.5 ${t.sidebar}`}>
+        <nav className={`
+          ${t.sidebar}
+          fixed inset-y-0 left-0 z-50 w-[220px] border-r p-3 space-y-0.5
+          transform transition-transform duration-200 ease-in-out
+          ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:static md:z-auto md:w-[200px] md:flex-shrink-0 md:translate-x-0 md:transition-none
+          overflow-y-auto
+        `}>
           <div className="flex items-center gap-2.5 px-3 py-2.5 mb-2">
             {org.iconUrl ? (
               <img src={org.iconUrl} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
@@ -927,7 +956,7 @@ export default function OrgDashboard() {
             .map((item) => (
             <button
               key={item.key}
-              onClick={() => navigateToSection(item.key)}
+              onClick={() => { navigateToSection(item.key); setMobileNavOpen(false) }}
               className={`w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-colors flex items-center gap-2 ${
                 section === item.key ? t.navActive : t.nav
               }`}
@@ -944,7 +973,7 @@ export default function OrgDashboard() {
         </nav>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {section === 'overview' && (
             <div className="space-y-6 max-w-3xl">
               <div>
