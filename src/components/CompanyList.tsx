@@ -128,33 +128,6 @@ function CompanyList({
   const processed = useMemo(() => {
     let result = [...companies]
 
-    if (filters.length > 0) {
-      const groups: Filter[][] = []
-      for (const f of filters) {
-        if (!f.column) continue
-        if (f.joinOr && groups.length > 0) {
-          groups[groups.length - 1].push(f)
-        } else {
-          groups.push([f])
-        }
-      }
-      for (const group of groups) {
-        result = result.filter((c) =>
-          group.some((f) => {
-            const val = (c.fields?.[f.column] ?? '').toString().toLowerCase()
-            let match: boolean
-            switch (f.operator) {
-              case 'contains': match = val.includes(f.value.toLowerCase()); break
-              case 'equals': match = val === f.value.toLowerCase(); break
-              case 'empty': match = val.length === 0; break
-              default: match = true
-            }
-            return f.negate ? !match : match
-          })
-        )
-      }
-    }
-
     result = applyPresets(result, activePresets, [...customPresets, ...orgQuickFilters])
 
     if (sortCriteria.length > 0) {
@@ -177,7 +150,7 @@ function CompanyList({
     }
 
     return result
-  }, [companies, filters, activePresets, customPresets, sortCriteria])
+  }, [companies, activePresets, customPresets, sortCriteria])
 
   const totalPages = Math.ceil(processed.length / itemsPerPage)
   const paginatedCompanies = processed.slice(

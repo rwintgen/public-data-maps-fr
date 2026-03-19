@@ -250,7 +250,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const t0 = Date.now()
   try {
-    const { geometry, limit: requestedLimit, presets: rawPresets, filters: rawFilters, connectorId, connectorOrgId, visibleFields: rawVisibleFields } = await req.json()
+    const { geometry, limit: requestedLimit, presets: rawPresets, filters: rawFilters, connectorId, connectorOrgId, visibleFields: rawVisibleFields, isRefinement: rawIsRefinement } = await req.json()
     const limit = typeof requestedLimit === 'number' && requestedLimit > 0
       ? Math.min(requestedLimit, RESULT_LIMIT)
       : RESULT_LIMIT
@@ -258,6 +258,7 @@ export async function POST(req: NextRequest) {
       ? rawPresets.filter((id: unknown) => typeof id === 'string' && Object.prototype.hasOwnProperty.call(PRESET_SQL, id))
       : []
     const isConnectorRequest = typeof connectorId === 'string' && typeof connectorOrgId === 'string'
+    const isRefinement = rawIsRefinement === true
     const filters = validateFilters(rawFilters, isConnectorRequest ? null : dbColumnsCache)
     const visibleFields: string[] | null = Array.isArray(rawVisibleFields) && rawVisibleFields.length > 0
       ? rawVisibleFields.filter((f: unknown) => typeof f === 'string' && f.length > 0 && f.length < 200).slice(0, 120)
@@ -289,7 +290,7 @@ export async function POST(req: NextRequest) {
     }
 
     let searchCountAfter: number | null = null
-    if (token) {
+    if (token && !isRefinement) {
       const tAuth = Date.now()
       try {
         searchCountAfter = await enforceAndIncrementSearchCount(token)
@@ -308,6 +309,46 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder()
     const sseSend = (data: any) => encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
     const sseHeaders = { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' }
+
+    /**
+     * Maps promoted PostgreSQL columns back to JSONB field names so the client
+     * receives the same `{ lat, lon, fields }` shape without any TOAST I/O.
+     */
+    const PROMOTED_TO_FIELD: Record<string, string> = {
+      siret: 'SIRET',
+      denomination: "Dénomination de l'unité légale",
+      denomination_usu: "Dénomination usuelle de l'établissement",
+      section_etab: "Section de l'établissement",
+      code_postal: "Code postal de l'établissement",
+      commune: "Commune de l'établissement",
+      ape_code: "Activité principale de l'établissement",
+      statut_admin: "Etat administratif de l'établissement",
+      statut_admin_ul: "Etat administratif de l'unité légale",
+      date_fermeture: "Date de fermeture de l'établissement",
+      date_fermeture_ul: "Date de fermeture de l'unité légale",
+      legal_form: "Catégorie juridique de l'unité légale",
+      categorie_ent: "Catégorie de l'entreprise",
+      employeur: "Caractère employeur de l'établissement",
+      ess: "Economie sociale et solidaire unité légale",
+      mission: "Société à mission unité légale",
+      assoc_id: "Identifiant association de l'unité légale",
+    }
+
+    const SKELETON_SELECT = `siret, lat, lon, denomination, denomination_usu, section_etab, code_postal, commune, ape_code, statut_admin, statut_admin_ul, date_fermeture, date_fermeture_ul, legal_form, categorie_ent, employeur, ess, mission, assoc_id, est_siege, diffusible, tranche_eff_sort`
+
+    /** Builds a `{ lat, lon, fields }` object from promoted columns (no JSONB). */
+    const buildSkeleton = (row: any): Company => {
+      const fields: Record<string, string> = {}
+      for (const [col, fieldName] of Object.entries(PROMOTED_TO_FIELD)) {
+        const v = row[col]
+        if (v != null && v !== '') fields[fieldName] = String(v)
+      }
+      if (row.est_siege != null) fields['Etablissement siège'] = row.est_siege ? 'Oui' : 'Non'
+      if (row.diffusible != null) fields["Statut de diffusion de l'établissement"] = row.diffusible ? 'O' : 'N'
+      if (row.tranche_eff_sort != null) fields["Tranche de l'effectif de l'établissement triable"] = String(row.tranche_eff_sort)
+      if (row.naf_division != null) fields["naf_division"] = String(row.naf_division)
+      return { lat: row.lat, lon: row.lon, fields }
+    }
 
     /**
      * When the client sends visibleFields, project only those keys from JSONB
@@ -390,10 +431,10 @@ export async function POST(req: NextRequest) {
             const tCursor = Date.now()
             await client.query('BEGIN')
             await client.query(
-              `DECLARE search_cursor NO SCROLL CURSOR FOR SELECT lat, lon, fields FROM establishments ${whereFull} LIMIT $2`,
+              `DECLARE search_cursor NO SCROLL CURSOR FOR SELECT ${SKELETON_SELECT} FROM establishments ${whereFull} LIMIT $2`,
               [geoJson, effectiveLimit, ...filterParams]
             )
-            console.log(`[search] DECLARE CURSOR: ${Date.now() - tCursor}ms (total: ${Date.now() - t0}ms)`)
+            console.log(`[search] DECLARE CURSOR (skeleton): ${Date.now() - tCursor}ms (total: ${Date.now() - t0}ms)`)
 
             controller.enqueue(sseSend({ type: 'start', total: effectiveLimit }))
 
@@ -425,16 +466,12 @@ export async function POST(req: NextRequest) {
               batchNum++
               if (batch.rows.length === 0) break
 
-              if (!dbColumnsCache && batch.rows.length > 0) {
-                dbColumnsCache = Object.keys(batch.rows[0].fields)
-              }
-
               loaded += batch.rows.length
               console.log(`[search] FETCH batch #${batchNum}: ${batch.rows.length} rows in ${Date.now() - tBatch}ms (loaded: ${loaded}, total: ${Date.now() - t0}ms)`)
               try {
                 controller.enqueue(sseSend({
                   type: 'batch',
-                  companies: batch.rows.map(projectFields),
+                  companies: batch.rows.map(buildSkeleton),
                   loaded,
                 }))
               } catch { break }
@@ -447,12 +484,13 @@ export async function POST(req: NextRequest) {
 
             controller.enqueue(sseSend({
               type: 'complete',
-              columns: dbColumnsCache ?? [],
+              columns: dbColumnsCache ?? Object.values(PROMOTED_TO_FIELD),
               truncated,
               totalMatching,
               resultLimit: effectiveLimit,
               searchCountAfter,
               activePresets: presets,
+              skeleton: true,
             }))
           }
         } catch (err) {

@@ -123,6 +123,11 @@ async function run() {
       tranche_eff_sort: parseInt(fields["Tranche de l'effectif de l'\u00e9tablissement triable"] ?? '', 10) || null,
       ess:              fields["Economie sociale et solidaire unit\u00e9 l\u00e9gale"] ?? '',
       mission:          fields["Soci\u00e9t\u00e9 \u00e0 mission unit\u00e9 l\u00e9gale"] ?? '',
+      denomination:     fields["D\u00e9nomination de l'unit\u00e9 l\u00e9gale"] ?? '',
+      denomination_usu: fields["D\u00e9nomination usuelle de l'\u00e9tablissement"] ?? '',
+      section_etab:     fields["Section de l'\u00e9tablissement"] ?? '',
+      code_postal:      fields["Code postal de l'\u00e9tablissement"] ?? '',
+      commune:          fields["Commune de l'\u00e9tablissement"] ?? '',
     }
   }
 
@@ -150,12 +155,17 @@ async function run() {
         + copyEscape(p.employeur) + '\t'
         + (p.tranche_eff_sort !== null ? p.tranche_eff_sort : '\\N') + '\t'
         + copyEscape(p.ess) + '\t'
-        + copyEscape(p.mission) + '\n'
+        + copyEscape(p.mission) + '\t'
+        + copyEscape(p.denomination) + '\t'
+        + copyEscape(p.denomination_usu) + '\t'
+        + copyEscape(p.section_etab) + '\t'
+        + copyEscape(p.code_postal) + '\t'
+        + copyEscape(p.commune) + '\n'
     }
 
     await new Promise((resolve, reject) => {
       const stream = client.query(copyFrom(
-        'COPY establishments (siret, lat, lon, fields, statut_admin, statut_admin_ul, date_fermeture, date_fermeture_ul, est_siege, diffusible, ape_code, naf_division, legal_form, assoc_id, categorie_ent, employeur, tranche_eff_sort, ess, mission) FROM STDIN'
+        'COPY establishments (siret, lat, lon, fields, statut_admin, statut_admin_ul, date_fermeture, date_fermeture_ul, est_siege, diffusible, ape_code, naf_division, legal_form, assoc_id, categorie_ent, employeur, tranche_eff_sort, ess, mission, denomination, denomination_usu, section_etab, code_postal, commune) FROM STDIN'
       ))
       stream.on('error', reject)
       stream.on('finish', resolve)

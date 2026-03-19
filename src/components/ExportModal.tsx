@@ -21,15 +21,18 @@ interface Props {
   userTier: UserTier
   onClose: () => void
   onPaywall: (feature: string) => void
+  fetchFullFields?: (sirets: string[]) => Promise<Record<string, Record<string, string>>>
 }
 
 /**
  * Modal for exporting search results in multiple formats.
  * Free users get CSV/JSON; premium formats (Excel, XML, GeoJSON) require PAYG+.
+ * When skeleton=true, fetches full JSONB fields before building the export.
  */
-export default function ExportModal({ companies, displayColumns, isDark, userTier, onClose, onPaywall }: Props) {
+export default function ExportModal({ companies, displayColumns, isDark, userTier, onClose, onPaywall, fetchFullFields }: Props) {
   const [selectedCols, setSelectedCols] = useState<string[]>([...displayColumns])
   const [format, setFormat] = useState<ExportFormat>('csv')
+  const [preparing, setPreparing] = useState(false)
   const isPremium = canExportPremium(userTier)
 
   const toggleCol = (col: string) => {
@@ -38,22 +41,38 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
     )
   }
 
-  const buildRows = () =>
-    companies.map((c) => {
-      const obj: Record<string, string> = {}
-      for (const col of selectedCols) {
-        obj[col] = (c.fields?.[col] ?? '').toString()
-      }
-      if (c.lat != null) obj['Latitude'] = String(c.lat)
-      if (c.lon != null) obj['Longitude'] = String(c.lon)
-      return obj
-    })
-
   /** Builds a blob in the chosen format and triggers a download. */
   const handleExport = async () => {
     if (selectedCols.length === 0) return
+    setPreparing(true)
 
-    const rows = buildRows()
+    try {
+      // If fetchFullFields is provided, enrich skeleton data before export
+      let enrichedCompanies = companies
+      if (fetchFullFields) {
+        const sirets = companies.map((c) => c.fields?.SIRET || c.fields?.siret).filter(Boolean)
+        if (sirets.length > 0) {
+          const fullMap = await fetchFullFields(sirets)
+          enrichedCompanies = companies.map((c) => {
+            const siret = c.fields?.SIRET || c.fields?.siret
+            const full = siret ? fullMap[siret] : null
+            return full ? { ...c, fields: { ...c.fields, ...full } } : c
+          })
+        }
+      }
+
+      const buildExportRows = () =>
+        enrichedCompanies.map((c) => {
+          const obj: Record<string, string> = {}
+          for (const col of selectedCols) {
+            obj[col] = (c.fields?.[col] ?? '').toString()
+          }
+          if (c.lat != null) obj['Latitude'] = String(c.lat)
+          if (c.lon != null) obj['Longitude'] = String(c.lon)
+          return obj
+        })
+
+      const rows = buildExportRows()
     let blob: Blob
     let filename: string
 
@@ -78,7 +97,7 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
       blob = new Blob([xml], { type: 'application/xml;charset=utf-8;' })
       filename = `export-${Date.now()}.xml`
     } else if (format === 'geojson') {
-      const features = companies.map((c) => {
+      const features = enrichedCompanies.map((c) => {
         const props: Record<string, string> = {}
         for (const col of selectedCols) {
           props[col] = (c.fields?.[col] ?? '').toString()
@@ -111,6 +130,11 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
     a.click()
     URL.revokeObjectURL(url)
     onClose()
+    } catch (err) {
+      console.error('Export failed:', err)
+    } finally {
+      setPreparing(false)
+    }
   }
 
   const t = isDark
@@ -219,10 +243,10 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
         <div className={`px-5 py-4 border-t ${t.divider}`}>
           <button
             onClick={handleExport}
-            disabled={selectedCols.length === 0}
+            disabled={selectedCols.length === 0 || preparing}
             className={`w-full rounded-lg py-2.5 text-sm font-semibold transition-all ${t.exportBtn}`}
           >
-            Export {format.toUpperCase()} ({selectedCols.length} field{selectedCols.length !== 1 ? 's' : ''})
+            {preparing ? 'Preparing…' : `Export ${format.toUpperCase()} (${selectedCols.length} field${selectedCols.length !== 1 ? 's' : ''})`}
           </button>
         </div>
       </>)}

@@ -23,7 +23,14 @@ CREATE TABLE IF NOT EXISTS establishments (
   employeur          TEXT,      -- 'Oui' / 'Non'
   tranche_eff_sort   INTEGER,   -- sortable workforce bracket (nullable)
   ess                TEXT,      -- 'O' / 'N' (économie sociale et solidaire)
-  mission            TEXT       -- 'O' / 'N' (société à mission)
+  mission            TEXT,      -- 'O' / 'N' (société à mission)
+
+  -- Promoted display columns (avoid TOAST reads during search)
+  denomination       TEXT,      -- company name (dénomination unité légale)
+  denomination_usu   TEXT,      -- establishment trade name
+  section_etab       TEXT,      -- section label (e.g. 'Commerce')
+  code_postal        TEXT,      -- postal code
+  commune            TEXT       -- city name
 );
 
 -- Spatial index
