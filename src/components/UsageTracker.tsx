@@ -1,6 +1,7 @@
 'use client'
 
 import { type UserTier, TIER_LIMITS } from '@/lib/usage'
+import { useAppLocale, tTier } from '@/lib/useAppLocale'
 
 interface UsageTrackerProps {
   isDark: boolean
@@ -26,27 +27,28 @@ interface UsageRow {
  */
 export default function UsageTracker({ isDark, userTier, searchCount, aiOverviewCount, savedSearchCount, isLoggedIn, isOpen, onToggle }: UsageTrackerProps) {
   const limits = TIER_LIMITS[userTier]
+  const { t: txt } = useAppLocale()
 
   const allRows: UsageRow[] = [
     {
-      label: 'Searches this month',
+      label: txt.searchesThisMonth,
       current: searchCount,
       limit: limits.searchesPerMonth === Infinity ? null : limits.searchesPerMonth,
     },
     {
-      label: 'AI overviews this month',
+      label: txt.aiOverviewsThisMonth,
       current: aiOverviewCount,
       limit: limits.aiOverviewsPerMonth === Infinity ? null : limits.aiOverviewsPerMonth === 0 ? null : limits.aiOverviewsPerMonth,
       unavailable: limits.aiOverviewsPerMonth === 0,
     },
     {
-      label: 'Saved searches',
+      label: txt.savedSearchesLabel,
       current: savedSearchCount,
       limit: limits.savedSearches === Infinity ? null : limits.savedSearches,
       unavailable: !isLoggedIn,
     },
     {
-      label: 'Results per query',
+      label: txt.resultsPerQuery,
       current: 0,
       limit: limits.resultsPerQuery,
     },
@@ -78,7 +80,7 @@ export default function UsageTracker({ isDark, userTier, searchCount, aiOverview
         badge: 'text-gray-500 bg-gray-100',
       }
 
-  const tierLabel = userTier === 'payg' ? 'Pay-as-you-go' : userTier.charAt(0).toUpperCase() + userTier.slice(1)
+  const tierLabel = tTier(txt, userTier)
 
   return (
     <div>
@@ -87,7 +89,7 @@ export default function UsageTracker({ isDark, userTier, searchCount, aiOverview
           onClick={onToggle}
           className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.label}`}
         >
-          <span>Usage</span>
+          <span>{txt.usage}</span>
           <svg
             className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
             fill="none"
@@ -108,7 +110,7 @@ export default function UsageTracker({ isDark, userTier, searchCount, aiOverview
                 <div key={row.label}>
                   <div className="flex items-center justify-between mb-0.5">
                     <span className={`text-[11px] ${t.rowLabel}`}>{row.label}</span>
-                    <span className={`text-[10px] italic ${t.unavailable}`}>Unavailable</span>
+                    <span className={`text-[10px] italic ${t.unavailable}`}>{txt.unavailable}</span>
                   </div>
                 </div>
               )
@@ -119,7 +121,7 @@ export default function UsageTracker({ isDark, userTier, searchCount, aiOverview
                 <div key={row.label}>
                   <div className="flex items-center justify-between mb-0.5">
                     <span className={`text-[11px] ${t.rowLabel}`}>{row.label}</span>
-                    <span className={`text-[10px] ${t.unlimited}`}>{row.current} · Unlimited</span>
+                    <span className={`text-[10px] ${t.unlimited}`}>{row.current} · {txt.unlimited}</span>
                   </div>
                 </div>
               )
@@ -130,7 +132,7 @@ export default function UsageTracker({ isDark, userTier, searchCount, aiOverview
                 <div key={row.label}>
                   <div className="flex items-center justify-between mb-0.5">
                     <span className={`text-[11px] ${t.rowLabel}`}>{row.label}</span>
-                    <span className={`text-[10px] ${t.rowValue}`}>Up to {row.limit.toLocaleString()}</span>
+                    <span className={`text-[10px] ${t.rowValue}`}>{txt.upTo(row.limit)}</span>
                   </div>
                 </div>
               )

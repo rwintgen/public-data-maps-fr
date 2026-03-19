@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, memo } from 'react'
 import { PRESET_FILTERS, PRESET_GROUPS, applyPresets, type CustomPreset } from '@/lib/presets'
 import { canExportPremium, type UserTier } from '@/lib/usage'
 import { PresetPill, CardSection, SectionTitle } from '@/components/ui'
+import { useAppLocale, tPreset, tGroup } from '@/lib/useAppLocale'
 
 interface Filter {
   column: string
@@ -120,6 +121,7 @@ function CompanyList({
   const [newLabelValue, setNewLabelValue] = useState('')
   const saveInputRef = useRef<HTMLInputElement>(null)
   const itemsPerPage = 20
+  const { t: txt } = useAppLocale()
 
   useEffect(() => {
     setPage(1)
@@ -298,7 +300,7 @@ function CompanyList({
         <svg className="w-12 h-12 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <p className="text-sm">Draw a polygon on the map to find companies</p>
+        <p className="text-sm">{txt.drawPolygon}</p>
       </div>
     )
   }
@@ -307,7 +309,7 @@ function CompanyList({
     <div className="flex flex-col h-full min-w-0">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <h2 className={`text-xs font-semibold uppercase tracking-wider ${t.label}`}>Results</h2>
+          <h2 className={`text-xs font-semibold uppercase tracking-wider ${t.label}`}>{txt.results}</h2>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${t.badge}`}>
             {processed.length}{processed.length !== companies.length ? `/${companies.length}` : ''}
           </span>
@@ -329,7 +331,7 @@ function CompanyList({
                 }
               }}
               className={`w-9 h-9 md:w-7 md:h-7 rounded-md flex items-center justify-center border transition-all ${isSaving ? t.toolbarActive : t.toolbarBtn}`}
-              data-tooltip="Save search" data-tooltip-pos="left"
+              data-tooltip={txt.saveSearch} data-tooltip-pos="left"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -342,7 +344,7 @@ function CompanyList({
             <button
               onClick={() => setShowSort(!showSort)}
               className={`w-9 h-9 md:w-7 md:h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showSort ? t.toolbarActive : t.toolbarBtn}`}
-              data-tooltip="Sort results" data-tooltip-pos="left"
+              data-tooltip={txt.sortResults} data-tooltip-pos="left"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l4-4m-4 4V4" />
@@ -356,7 +358,7 @@ function CompanyList({
             <button
               onClick={() => setShowPresets(!showPresets)}
               className={`w-9 h-9 md:w-7 md:h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showPresets ? t.toolbarActive : t.toolbarBtn}`}
-              data-tooltip="Quick filters" data-tooltip-pos="left"
+              data-tooltip={txt.quickFilters} data-tooltip-pos="left"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
@@ -370,7 +372,7 @@ function CompanyList({
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`w-9 h-9 md:w-7 md:h-7 rounded-md flex items-center justify-center border transition-all text-xs ${showFilters ? t.toolbarActive : t.toolbarBtn}`}
-              data-tooltip="Filter results" data-tooltip-pos="left"
+              data-tooltip={txt.filterResults} data-tooltip-pos="left"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -386,8 +388,8 @@ function CompanyList({
       {saveNotice && (
         <div className={`flex items-center gap-1.5 px-2.5 rounded-lg text-xs md:text-[11px] font-medium animate-save-notice ${isDark ? 'bg-white/5 text-gray-300' : 'bg-violet-50 text-violet-700'}`}>
           <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span>Sign in to save searches</span>
-          <button onClick={onSignInPrompt} className={`ml-auto text-xs md:text-[11px] font-semibold underline transition-colors ${isDark ? 'text-gray-200 hover:text-white' : 'text-violet-600 hover:text-violet-800'}`}>Sign in</button>
+          <span>{txt.signInToSave}</span>
+          <button onClick={onSignInPrompt} className={`ml-auto text-xs md:text-[11px] font-semibold underline transition-colors ${isDark ? 'text-gray-200 hover:text-white' : 'text-violet-600 hover:text-violet-800'}`}>{txt.signIn}</button>
         </div>
       )}
 
@@ -398,7 +400,7 @@ function CompanyList({
             value={saveName}
             onChange={(e) => setSaveName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') { setIsSaving(false); setSaveName('') } }}
-            placeholder="Search name…"
+            placeholder={txt.searchNamePlaceholder}
             className={`flex-1 min-w-0 text-xs bg-transparent outline-none ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'}`}
           />
           <button
@@ -406,13 +408,13 @@ function CompanyList({
             disabled={!saveName.trim()}
             className={`text-xs md:text-[11px] font-semibold transition-colors px-2 py-1 md:px-1.5 md:py-0.5 rounded ${saveName.trim() ? (isDark ? 'text-gray-300 hover:text-white' : 'text-violet-500 hover:text-violet-400') : isDark ? 'text-gray-600' : 'text-gray-400'}`}
           >
-            Save
+            {txt.save}
           </button>
           <button
             onClick={() => { setIsSaving(false); setSaveName('') }}
             className={`text-xs md:text-[11px] font-medium transition-colors px-2 py-1 md:px-1 md:py-0.5 rounded ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
           >
-            Cancel
+            {txt.cancel}
           </button>
         </div>
       )}
@@ -435,7 +437,7 @@ function CompanyList({
               const cp = customPresets.find((x) => x.id === id)
               if (p) return (
                 <span key={id} className={`inline-flex items-center gap-1 text-xs md:text-[10px] font-medium pl-2 pr-1 py-0.5 rounded-full border flex-shrink-0 ${t.presetTagActive}`}>
-                  {p.label}
+                  {tPreset(txt, p.id, p.label)}
                   <button onClick={() => onPresetsChange(activePresets.filter((x) => x !== id))} className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-black/10">
                     <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
@@ -469,7 +471,7 @@ function CompanyList({
             <button
               onClick={() => setChipsExpanded(!chipsExpanded)}
               className={`transition-colors ${t.chipClear}`}
-              data-tooltip={chipsExpanded ? 'Collapse' : 'Expand'}
+              data-tooltip={chipsExpanded ? txt.collapse : txt.expand}
             >
               <svg className={`w-3 h-3 transition-transform ${chipsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
@@ -478,7 +480,7 @@ function CompanyList({
             <button
               onClick={clearAll}
               className={`transition-colors ${t.chipClear}`}
-              data-tooltip="Clear all"
+              data-tooltip={txt.clearAllTags}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -502,7 +504,7 @@ function CompanyList({
               <button
                 onClick={() => updateSortCriterion(i, { dir: sc.dir === 'asc' ? 'desc' : 'asc' })}
                 className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${t.activeSortIcon}`}
-                data-tooltip={sc.dir === 'asc' ? 'Ascending' : 'Descending'}
+                data-tooltip={sc.dir === 'asc' ? txt.ascending : txt.descending}
               >
                 <svg className={`w-3.5 h-3.5 transition-transform ${sc.dir === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -511,7 +513,7 @@ function CompanyList({
               <button
                 onClick={() => removeSortCriterion(i)}
                 className={`transition-colors ${t.filterRemove}`}
-                data-tooltip="Remove"
+                data-tooltip={txt.remove}
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -524,7 +526,7 @@ function CompanyList({
               onClick={addSortCriterion}
               className={`flex items-center text-xs md:text-[10px] font-medium h-6 ${t.sortIcon}`}
             >
-              + Add sort {sortCriteria.length > 0 ? 'criterion' : ''}
+              {sortCriteria.length > 0 ? txt.addSortCriterion : txt.addSort}
             </button>
           )}
         </CardSection>
@@ -536,7 +538,7 @@ function CompanyList({
             const activeInGroup = presets.filter((p) => activePresets.includes(p.id))
             return (
               <div key={group} className="mb-1.5 last:mb-0">
-                <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
+                <SectionTitle isDark={isDark} className="mb-0.5">{tGroup(txt, group)}</SectionTitle>
                 <div className="flex flex-wrap gap-1 items-center">
                   {presets.map((preset) => {
                     const isActive = activePresets.includes(preset.id)
@@ -545,10 +547,10 @@ function CompanyList({
                     return (
                       <span key={preset.id} className="contents">
                         {isActive && activeIdx > 0 && (
-                          <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                          <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{txt.orLabel}</span>
                         )}
                         <PresetPill
-                          label={preset.label}
+                          label={tPreset(txt, preset.id, preset.label)}
                           active={isActive}
                           isDark={isDark}
                           disabled={isPreQuery}
@@ -562,7 +564,7 @@ function CompanyList({
                           onMouseEnter={() => setHoveredPreset(preset.id)}
                           onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
                           onMouseLeave={() => { setHoveredPreset(null); setPresetTooltipPos(null) }}
-                          tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
+                          tooltip={isPreQuery ? txt.preSearchFilterApplied : undefined}
                           tooltipPos={isPreQuery ? 'bottom-left' : undefined}
                         />
                       </span>
@@ -577,20 +579,20 @@ function CompanyList({
               onClick={() => onPresetsChange([])}
               className={`text-[10px] font-medium mt-1.5 ${t.filterRemove}`}
             >
-              Clear all tags
+              {txt.clearAllTags}
             </button>
           )}
 
           {orgQuickFilters.length > 0 && (
             <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
               <div className="flex items-center justify-between mb-0.5">
-                <div className={`text-[11px] md:text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Organization</div>
+                <div className={`text-[11px] md:text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{txt.organization}</div>
                 {(orgRole === 'owner' || orgRole === 'admin') && (
                   <a
                     href="/org#settings"
                     className={`text-xs md:text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    Manage
+                    {txt.manage}
                   </a>
                 )}
               </div>
@@ -613,7 +615,7 @@ function CompanyList({
                       onMouseEnter={() => setHoveredPreset(oq.id)}
                       onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
                       onMouseLeave={() => { setHoveredPreset(null); setPresetTooltipPos(null) }}
-                      tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
+                      tooltip={isPreQuery ? txt.preSearchFilterApplied : undefined}
                       tooltipPos={isPreQuery ? 'bottom-left' : undefined}
                     />
                   )
@@ -626,7 +628,7 @@ function CompanyList({
           {canExportPremium(userTier) && (
             <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
               <div className="flex items-center justify-between mb-0.5">
-                <div className={`text-[11px] md:text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Custom</div>
+                <div className={`text-[11px] md:text-[9px] uppercase tracking-widest font-semibold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{txt.custom}</div>
                 <button
                   onClick={() => {
                     setCustomLabelForm(!customLabelForm)
@@ -634,7 +636,7 @@ function CompanyList({
                   }}
                   className={`text-xs md:text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                 >
-                  {customLabelForm ? 'Cancel' : '+ New'}
+                  {customLabelForm ? txt.cancel : txt.newFilter}
                 </button>
               </div>
               {customPresets.length > 0 && (
@@ -660,7 +662,7 @@ function CompanyList({
                           onMouseEnter={() => setHoveredPreset(cp.id)}
                           onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
                           onMouseLeave={() => { setHoveredPreset(null); setPresetTooltipPos(null) }}
-                          tooltip={isPreQuery ? 'Pre-search filter applied' : undefined}
+                          tooltip={isPreQuery ? txt.preSearchFilterApplied : undefined}
                           tooltipPos={isPreQuery ? 'bottom-left' : undefined}
                         />
                         <button
@@ -683,7 +685,7 @@ function CompanyList({
                     type="text"
                     value={newLabelName}
                     onChange={(e) => setNewLabelName(e.target.value)}
-                    placeholder="Label name…"
+                    placeholder={txt.labelName}
                     className={`w-full rounded border px-1.5 py-1 outline-none ${t.input}`}
                   />
                   <div className="flex items-center gap-1 min-w-0">
@@ -708,9 +710,9 @@ function CompanyList({
                       onChange={(e) => setNewLabelOperator(e.target.value as Filter['operator'])}
                       className={`rounded border px-1 py-1 outline-none ${t.select}`}
                     >
-                      <option value="contains">contains</option>
-                      <option value="equals">equals</option>
-                      <option value="empty">empty</option>
+                      <option value="contains">{txt.filterOperator('contains')}</option>
+                      <option value="equals">{txt.filterOperator('equals')}</option>
+                      <option value="empty">{txt.filterOperator('empty')}</option>
                     </select>
                   </div>
                   {newLabelOperator !== 'empty' && (
@@ -718,7 +720,7 @@ function CompanyList({
                       type="text"
                       value={newLabelValue}
                       onChange={(e) => setNewLabelValue(e.target.value)}
-                      placeholder="value…"
+                      placeholder={txt.valuePlaceholder}
                       className={`w-full rounded border px-1.5 py-1 outline-none ${t.input}`}
                     />
                   )}
@@ -743,7 +745,7 @@ function CompanyList({
                       isDark ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    Create label
+                    {txt.createLabel}
                   </button>
                 </div>
               )}
@@ -759,7 +761,7 @@ function CompanyList({
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              Custom labels — upgrade to unlock
+              {txt.customLabelsUpgrade}
             </button>
           )}
           {hoveredPreset && presetTooltipPos && (() => {
@@ -821,20 +823,20 @@ function CompanyList({
                   onChange={(e) => updateFilter(i, { operator: e.target.value as Filter['operator'] })}
                   className={`rounded border px-1 py-1 outline-none ${t.select}`}
                 >
-                  <option value="contains">contains</option>
-                  <option value="equals">equals</option>
-                  <option value="empty">empty</option>
+                  <option value="contains">{txt.filterOperator('contains')}</option>
+                  <option value="equals">{txt.filterOperator('equals')}</option>
+                  <option value="empty">{txt.filterOperator('empty')}</option>
                 </select>
                 {f.operator !== 'empty' && (
                   <input
                     type="text"
                     value={f.value}
                     onChange={(e) => updateFilter(i, { value: e.target.value })}
-                    placeholder="value…"
+                    placeholder={txt.valuePlaceholder}
                     className={`flex-1 min-w-0 rounded border px-1.5 py-1 outline-none ${t.input}`}
                   />
                 )}
-                <button onClick={() => removeFilter(i)} className={`flex-shrink-0 ${t.filterRemove}`} data-tooltip="Remove filter">
+                <button onClick={() => removeFilter(i)} className={`flex-shrink-0 ${t.filterRemove}`} data-tooltip={txt.remove}>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -846,7 +848,7 @@ function CompanyList({
             onClick={addFilter}
             className={`flex items-center text-xs md:text-[10px] font-medium h-6 ${t.sortIcon}`}
           >
-            + Add filter
+            {txt.addFilter}
           </button>
         </CardSection>
       )}
@@ -868,7 +870,7 @@ function CompanyList({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   {listColumns.length === 0 ? (
-                    <p className={`text-xs italic ${t.itemSub}`}>No columns selected</p>
+                    <p className={`text-xs italic ${t.itemSub}`}>{txt.noColumnsSelected}</p>
                   ) : (
                     listColumns.map((col, ci) => {
                       const val = company.fields?.[col] ?? ''
@@ -890,7 +892,7 @@ function CompanyList({
                 <button
                   onClick={(e) => { e.stopPropagation(); onExpand(company) }}
                   className={`opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 w-8 h-8 md:w-6 md:h-6 rounded-md flex items-center justify-center ${t.toolbarBtn}`}
-                  data-tooltip="View details" data-tooltip-pos="left"
+                  data-tooltip={txt.viewDetails} data-tooltip-pos="left"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -910,7 +912,7 @@ function CompanyList({
             className={`text-sm md:text-xs font-medium disabled:opacity-30 transition-colors px-4 py-2.5 md:px-2 md:py-1 ${t.paginationBtn}`}
             data-tooltip="Previous page"
           >
-            &larr; Prev
+            {txt.prevPage}
           </button>
           <span className={`text-xs ${t.paginationNum}`}>
             {page} / {totalPages}
@@ -921,7 +923,7 @@ function CompanyList({
             className={`text-sm md:text-xs font-medium disabled:opacity-30 transition-colors px-4 py-2.5 md:px-2 md:py-1 ${t.paginationBtn}`}
             data-tooltip="Next page"
           >
-            Next &rarr;
+            {txt.nextPage}
           </button>
         </div>
       )}

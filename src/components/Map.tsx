@@ -7,23 +7,11 @@ import { useRef, useEffect, useCallback, useMemo } from 'react'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 const FRANCE_CENTER: [number, number] = [46.603354, 1.888334]
 const FRANCE_ZOOM = 6
 
-export interface ClusterPoint {
-  lat: number
-  lng: number
-  count: number
-}
-
-export interface ViewportBounds {
-  west: number
-  south: number
-  east: number
-  north: number
-  zoom: number
-}
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
 const defaultIcon = new L.Icon({
@@ -85,6 +73,7 @@ function ClusteredMarkers({
   const expandRef = useRef(onExpand)
   selectRef.current = onCompanySelect
   expandRef.current = onExpand
+  const { t: txt } = useAppLocale()
 
   useEffect(() => {
     const g = L.markerClusterGroup({
@@ -131,7 +120,7 @@ function ClusteredMarkers({
 
       let html = '<div class="min-w-[160px]">'
       if (popupColumns.length === 0) {
-        html += '<p class="text-xs italic text-gray-400">No columns selected</p>'
+        html += `<p class="text-xs italic text-gray-400">${txt.noColumnsSelected}</p>`
       } else {
         popupColumns.forEach((col, i) => {
           const val = esc(String(c.fields?.[col] ?? ''))
@@ -139,7 +128,7 @@ function ClusteredMarkers({
           else html += `<p class="text-xs text-gray-400 mt-0.5">${esc(col)}: ${val}</p>`
         })
       }
-      html += '<button class="marker-expand-btn mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 transition-colors">View details <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg></button>'
+      html += `<button class="marker-expand-btn mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 transition-colors">${txt.viewDetailsBtn} <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg></button>`
       html += '</div>'
       m.bindPopup(html)
       return m
@@ -152,6 +141,7 @@ function ClusteredMarkers({
 
 /** Renders and auto-zooms a larger marker with a popup for the selected company. */
 function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDeselect }: { selectedCompany: any; popupColumns: string[]; onExpand: (company: any) => void; onDeselect: () => void }) {
+  const { t: txt } = useAppLocale()
   const map = useMap()
   const markerRef = useRef<L.Marker | null>(null)
 
@@ -184,7 +174,7 @@ function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDesele
       <Popup>
         <div className="min-w-[180px]">
           {popupColumns.length === 0 ? (
-            <p className="text-xs italic text-gray-400">No columns selected</p>
+            <p className="text-xs italic text-gray-400">{txt.noColumnsSelected}</p>
           ) : (
             popupColumns.map((col, i) => {
               const val = selectedCompany.fields?.[col] ?? ''
@@ -196,7 +186,7 @@ function SelectedMarkerPopup({ selectedCompany, popupColumns, onExpand, onDesele
                   onClick={() => onExpand(selectedCompany)}
                   className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-2.5 transition-colors"
                 >
-                  View details
+                  {txt.viewDetailsBtn}
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                 </button>
         </div>
@@ -255,107 +245,6 @@ function MapDeselectHandler({ onCompanySelectRef, recentMarkerClickRef }: {
 }
 
 /**
- * Fires `onViewportChange` with debounced bbox + zoom whenever the map
- * is panned or zoomed. Used to feed the /api/clusters endpoint.
- */
-function ViewportTracker({ onViewportChange }: { onViewportChange: (bounds: ViewportBounds) => void }) {
-  const map = useMap()
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const cbRef = useRef(onViewportChange)
-  cbRef.current = onViewportChange
-
-  useEffect(() => {
-    const fire = () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        const b = map.getBounds()
-        cbRef.current({
-          west: b.getWest(),
-          south: b.getSouth(),
-          east: b.getEast(),
-          north: b.getNorth(),
-          zoom: map.getZoom(),
-        })
-      }, 300)
-    }
-    fire()
-    map.on('moveend', fire)
-    map.on('zoomend', fire)
-    return () => {
-      map.off('moveend', fire)
-      map.off('zoomend', fire)
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [map])
-
-  return null
-}
-
-function clusterColor(count: number, dark: boolean): string {
-  if (count >= 10000) return dark ? '#c084fc' : '#7c3aed'
-  if (count >= 1000) return dark ? '#a78bfa' : '#8b5cf6'
-  if (count >= 100) return dark ? '#c4b5fd' : '#a78bfa'
-  return dark ? '#ddd6fe' : '#c4b5fd'
-}
-
-function clusterRadius(count: number): number {
-  if (count >= 50000) return 32
-  if (count >= 10000) return 26
-  if (count >= 1000) return 22
-  if (count >= 100) return 18
-  if (count >= 10) return 14
-  return 10
-}
-
-/**
- * Renders server-side clusters as lightweight circle markers with count labels.
- * Completely bypasses React reconciliation for performance — uses native Leaflet.
- */
-function ViewportClusterLayer({ clusters, isDark }: { clusters: ClusterPoint[]; isDark: boolean }) {
-  const map = useMap()
-  const layerRef = useRef<L.LayerGroup | null>(null)
-
-  useEffect(() => {
-    const g = L.layerGroup()
-    layerRef.current = g
-    map.addLayer(g)
-    return () => { map.removeLayer(g) }
-  }, [map])
-
-  useEffect(() => {
-    const g = layerRef.current
-    if (!g) return
-    g.clearLayers()
-    for (const c of clusters) {
-      if (c.count === 1) {
-        L.circleMarker([c.lat, c.lng], {
-          radius: 4,
-          fillColor: isDark ? '#a78bfa' : '#7c3aed',
-          fillOpacity: 0.8,
-          stroke: false,
-        }).addTo(g)
-      } else {
-        const r = clusterRadius(c.count)
-        const color = clusterColor(c.count, isDark)
-        const display = c.count >= 1000 ? Math.round(c.count / 1000) + 'k' : String(c.count)
-        const fontSize = c.count >= 10000 ? 10 : c.count >= 100 ? 11 : 12
-        L.marker([c.lat, c.lng], {
-          icon: L.divIcon({
-            html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;font-size:${fontSize}px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,0.3);">${display}</div>`,
-            className: '',
-            iconSize: L.point(r * 2, r * 2),
-            iconAnchor: L.point(r, r),
-          }),
-          interactive: false,
-        }).addTo(g)
-      }
-    }
-  }, [clusters, isDark])
-
-  return null
-}
-
-/**
  * Main Leaflet map with polygon/rectangle draw tools.
  * Renders company markers, handles draw-create/edit/delete events,
  * and supports restoring saved search geometries.
@@ -374,8 +263,6 @@ export default function Map({
   restoreGeometry,
   sidebarOpen,
   onToggleSidebar,
-  clusters,
-  onViewportChange,
 }: {
   companies: any[]
   selectedCompany: any
@@ -390,14 +277,13 @@ export default function Map({
   restoreGeometry: { geometry: any; ts: number } | null
   sidebarOpen: boolean
   onToggleSidebar: () => void
-  clusters?: ClusterPoint[]
-  onViewportChange?: (bounds: ViewportBounds) => void
 }) {
   const featureGroupRef = useRef<L.FeatureGroup | null>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const onSearchRef = useRef(onSearch)
   const onCompanySelectRef = useRef(onCompanySelect)
   const recentMarkerClickRef = useRef(false)
+  const { t: txt } = useAppLocale()
   onSearchRef.current = onSearch
   onCompanySelectRef.current = onCompanySelect
 
@@ -540,8 +426,6 @@ export default function Map({
           edit={editConfig}
         />
       </FeatureGroup>
-      {clusters && clusters.length > 0 && <ViewportClusterLayer clusters={clusters} isDark={isDark} />}
-      {onViewportChange && <ViewportTracker onViewportChange={onViewportChange} />}
       <ClusteredMarkers companies={companies} onCompanySelect={onCompanySelect} onExpand={onExpand} popupColumns={popupColumns} recentMarkerClickRef={recentMarkerClickRef} />
       <SelectedMarkerPopup selectedCompany={selectedCompany} popupColumns={popupColumns} onExpand={onExpand} onDeselect={handleDeselect} />
       <MapDeselectHandler onCompanySelectRef={onCompanySelectRef} recentMarkerClickRef={recentMarkerClickRef} />
@@ -555,7 +439,7 @@ export default function Map({
       onClick={onToggleSidebar}
       style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 1100 }}
       className="hidden md:flex w-8 h-16 rounded-lg bg-white hover:bg-gray-50 border border-gray-300 shadow-md items-center justify-center transition-colors"
-      data-tooltip={sidebarOpen ? 'Hide panel' : 'Show panel'} data-tooltip-pos="left"
+      data-tooltip={sidebarOpen ? txt.hidePanel : txt.showPanel} data-tooltip-pos="left"
     >
       <svg
         className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${sidebarOpen ? 'rotate-0' : 'rotate-180'}`}
@@ -570,7 +454,7 @@ export default function Map({
       <button
         onClick={onLocate}
         className="bg-white hover:bg-gray-50 border border-gray-300 shadow-md rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
-        data-tooltip="Go to my location" data-tooltip-pos="right"
+        data-tooltip={txt.goToLocation} data-tooltip-pos="right"
       >
         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -580,7 +464,7 @@ export default function Map({
       <button
         onClick={() => mapInstanceRef.current?.flyTo(FRANCE_CENTER, FRANCE_ZOOM, { animate: true, duration: 1 })}
         className="bg-white hover:bg-gray-50 border border-gray-300 shadow-md rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
-        data-tooltip="Reset to France view" data-tooltip-pos="right"
+        data-tooltip={txt.resetFranceView} data-tooltip-pos="right"
       >
         <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

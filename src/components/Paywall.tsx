@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Modal, CloseButton, InfoTooltip } from '@/components/ui'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface Props {
   isDark: boolean
@@ -26,6 +27,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
   const [discountLoading, setDiscountLoading] = useState(false)
   const [discountError, setDiscountError] = useState('')
   const [discountSuccess, setDiscountSuccess] = useState(false)
+  const { t: txt } = useAppLocale()
 
   const t = isDark
     ? {
@@ -108,88 +110,88 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
   const plans: Plan[] = [
     {
       id: 'free',
-      name: 'Free',
-      description: 'Explore public data at no cost',
+      name: txt.planFree,
+      description: txt.planFreeDesc,
       price: '0',
       priceLine: null,
       priceUnit: null,
-      priceNote: 'Free forever',
-      cta: 'Free forever',
+      priceNote: txt.planFreeNote,
+      cta: txt.planFreeNote,
       popular: false,
       isFree: true,
       features: [
-        { text: '10 searches / month', included: true },
-        { text: '5,000 results per query', included: true },
-        { text: '5 saved searches', included: true },
-        { text: 'CSV & JSON export', included: true },
-        { text: 'Pre-search filters', included: false },
-        { text: 'Custom labels', included: false },
-        { text: 'AI overviews', included: false },
+        { text: txt.feat10Searches, included: true },
+        { text: txt.feat5kResults, included: true },
+        { text: txt.feat5Saved, included: true },
+        { text: txt.featCsvJson, included: true },
+        { text: txt.featPreSearch, included: false },
+        { text: txt.featCustomLabels, included: false },
+        { text: txt.featAiOverviews, included: false },
       ],
     },
     {
       id: 'payg',
-      name: 'Pay as you go',
-      description: 'Only pay for what you use',
+      name: txt.planPayg,
+      description: txt.planPaygDesc,
       price: null,
-      priceLine: 'Usage-based',
+      priceLine: txt.planPaygLine,
       priceUnit: null,
       priceNote: null,
-      cta: 'Not available yet',
+      cta: txt.planPaygCta,
       popular: false,
       isFree: false,
       disabled: true,
       features: [
-        { text: 'Everything in Free plan', included: true },
-        { text: 'Unlimited searches (pay-per-use)', included: true },
-        { text: '10,000 results per query', included: true },
-        { text: '100 saved searches', included: true },
-        { text: 'All export formats', included: true },
-        { text: 'Custom labels', included: true },
-        { text: 'AI overviews (pay-per-use)', included: true },
+        { text: txt.featEverythingFree, included: true },
+        { text: txt.featUnlimitedSearches, included: true },
+        { text: txt.feat10kResults, included: true },
+        { text: txt.feat100Saved, included: true },
+        { text: txt.featAllFormats, included: true },
+        { text: txt.featCustomLabels, included: true },
+        { text: txt.featAiPpu, included: true },
       ],
     },
     {
       id: 'individual',
-      name: 'Individual',
-      description: 'For power users & professionals',
+      name: txt.planIndividual,
+      description: txt.planIndividualDesc,
       price: individualPrice,
       priceLine: null,
       priceUnit: '/mo',
       priceNote: null,
-      cta: 'Start free trial',
+      cta: txt.planIndividualCta,
       popular: true,
       isFree: false,
       features: [
-        { text: 'Everything in Pay as you go plan', included: true },
-        { text: '100 searches / month', included: true },
-        { text: '50,000 results per query', included: true },
-        { text: 'Pre-search filters', included: true },
-        { text: 'Unlimited saved searches', included: true },
+        { text: txt.featEverythingPayg, included: true },
+        { text: txt.feat100Searches, included: true },
+        { text: txt.feat50kResults, included: true },
+        { text: txt.featPreSearch, included: true },
+        { text: txt.featUnlimitedSaved, included: true },
         // { text: 'All export formats', included: true },
-        { text: '250 AI overviews / month', included: true },
+        { text: txt.feat250Ai, included: true },
       ],
     },
     {
       id: 'enterprise',
-      name: 'Enterprise',
-      description: 'For teams that need more',
+      name: txt.planEnterprise,
+      description: txt.planEnterpriseDesc,
       price: enterprisePrice,
       priceLine: null,
       priceUnit: '/seat/mo',
       priceNote: null,
-      cta: 'Start free trial',
+      cta: txt.planEnterpriseCta,
       popular: false,
       isFree: false,
       isEnterprise: false,
       features: [
-        { text: 'Everything in Individual plan', included: true },
-        { text: 'Unlimited searches', included: true },
-        { text: 'Custom result limits', included: true },
-        { text: 'Unlimited AI overviews', included: true },
-        { text: 'Plug in your data', included: true },
-        { text: 'Connect your enterprise software', included: true },
-        { text: 'Premium 24/7 support', included: true },
+        { text: txt.featEverythingIndividual, included: true },
+        { text: txt.featUnlimitedSearchesFlat, included: true },
+        { text: txt.featCustomLimits, included: true },
+        { text: txt.featUnlimitedAi, included: true },
+        { text: txt.featPlugData, included: true },
+        { text: txt.featConnectSoftware, included: true },
+        { text: txt.featPremiumSupport, included: true },
       ],
     },
   ]
@@ -201,12 +203,12 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
           <div className="min-w-0 flex-1 pr-4">
             <h2 className={`text-lg font-semibold leading-tight ${t.title}`}>
               {featureName === 'plan'
-                ? <span className={isDark ? 'text-white' : 'text-violet-600'}>Choose your plan</span>
-                : <>Unlock <span className={isDark ? 'text-white' : 'text-violet-600'}>{featureName}</span></>
+                ? <span className={isDark ? 'text-white' : 'text-violet-600'}>{txt.choosePlan}</span>
+                : <>{txt.unlock} <span className={isDark ? 'text-white' : 'text-violet-600'}>{featureName}</span></>
               }
             </h2>
             <p className={`text-xs mt-1.5 leading-relaxed max-w-md ${t.subtitle}`}>
-              Choose a plan that works for you. Upgrade, downgrade, or cancel anytime.
+              {txt.planSubtitle}
             </p>
           </div>
           <CloseButton onClick={handleClose} isDark={isDark} />
@@ -219,13 +221,13 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
               onClick={() => setBilling('monthly')}
               className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all ${billing === 'monthly' ? t.toggleActive : t.toggleInactive}`}
             >
-              Monthly
+              {txt.monthly}
             </button>
             <button
               onClick={() => setBilling('yearly')}
               className={`px-3 py-1 text-[11px] font-medium rounded-md transition-all flex items-center gap-1.5 ${billing === 'yearly' ? t.toggleActive : t.toggleInactive}`}
             >
-              Yearly
+              {txt.yearly}
               <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${t.saveBadge}`}>−20%</span>
             </button>
           </div>
@@ -244,7 +246,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
               </p>
               <p className={`text-[10px] mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 Expires {new Date(discountInfo.expiresAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
-                {' '}({Math.max(0, Math.ceil((new Date(discountInfo.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days left)
+                {' '}({txt.daysLeft(Math.max(0, Math.ceil((new Date(discountInfo.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))))})
               </p>
             </div>
             {onRevertDiscount && (
@@ -259,7 +261,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                     : 'border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                Revert to free
+                {txt.revertToFree}
               </button>
             )}
           </div>
@@ -274,7 +276,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
             >
               {plan.popular && (
                 <span className={`absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full whitespace-nowrap ${t.badge}`}>
-                  Most popular
+                  {txt.mostPopular}
                 </span>
               )}
 
@@ -299,12 +301,12 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                     )}
                     {plan.price !== '0' && billing === 'yearly' && !plan.priceUnit?.includes('seat') && (
                       <p className={`text-[10px] mt-0.5 ${t.cardUnit}`}>
-                        Billed ${(parseFloat(plan.price) * 12).toFixed(2)}/year
+                        {txt.billedYearly((parseFloat(plan.price) * 12).toFixed(2))}
                       </p>
                     )}
                     {plan.priceUnit?.includes('seat') && (
                       <p className={`text-[10px] mt-0.5 ${t.seatNote}`}>
-                        Starting price — contact sales for a quote
+                        {txt.seatNote}
                       </p>
                     )}
                   </>
@@ -363,9 +365,9 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                 }`}
               >
                 {plan.id === currentTier
-                  ? 'Current plan'
+                  ? txt.currentPlan
                   : plan.isFree && discountInfo
-                    ? 'Revert to free plan'
+                    ? txt.revertToFreePlan
                     : plan.cta}
               </button>
             </div>
@@ -379,14 +381,14 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             <p className={`text-[11px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Need special services or a large number of seats?
+              {txt.needSpecialServices}
             </p>
           </div>
           <a
             href="mailto:romainwintgens@gmail.com?subject=Custom%20Enterprise%20Plan"
             className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all border ${isDark ? 'border-white/15 text-gray-300 hover:border-white/30 hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'}`}
           >
-            Contact Sales
+            {txt.contactSales}
           </a>
         </div>
 
@@ -396,7 +398,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
             onClick={() => { setDiscountOpen(!discountOpen); setDiscountError('') }}
             className={`text-[11px] font-medium transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
           >
-            {discountOpen ? 'Hide' : 'Have a discount code?'}
+            {discountOpen ? txt.hideCode : txt.haveDiscountCode}
           </button>
           {discountOpen && (
             <div className="flex items-center gap-2 mt-2">
@@ -416,7 +418,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                     })
                   }
                 }}
-                placeholder="Enter code"
+                placeholder={txt.enterCode}
                 className={`flex-1 rounded-lg border px-3 py-1.5 text-xs outline-none transition-colors ${
                   isDark
                     ? 'bg-white/5 border-white/10 text-white placeholder-gray-600 focus:border-violet-500'
@@ -445,7 +447,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
                     : (isDark ? 'border-white/15 text-gray-300 hover:border-white/30 hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50')
                 }`}
               >
-                {discountLoading ? 'Applying…' : 'Apply'}
+                {discountLoading ? txt.applying : txt.apply}
               </button>
             </div>
           )}
@@ -453,7 +455,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
             <p className="text-[11px] mt-1.5 text-red-400">{discountError}</p>
           )}
           {discountSuccess && (
-            <p className={`text-[11px] mt-1.5 ${isDark ? 'text-green-400' : 'text-green-600'}`}>Code applied! Your plan has been upgraded.</p>
+            <p className={`text-[11px] mt-1.5 ${isDark ? 'text-green-400' : 'text-green-600'}`}>{txt.codeApplied}</p>
           )}
         </div>
 
@@ -463,7 +465,7 @@ export default function Paywall({ isDark, featureName, onClose, onCheckout, onRe
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
           <p className={`text-[11px] leading-relaxed ${t.mission}`}>
-            Public Data Maps is an open-source project committed to giving everyone free access to public data. We're not looking to make a profit — only resource-intensive features are behind a paywall to cover infrastructure costs.
+            {txt.missionStatement}
           </p>
         </div>
       </>)}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface Suggestion {
   place_id: number
@@ -21,6 +22,7 @@ interface Props {
  * Debounces input by 300 ms and supports keyboard navigation.
  */
 export default function SearchBar({ onSelect, isDark }: Props) {
+  const { t: txt } = useAppLocale()
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -145,11 +147,11 @@ export default function SearchBar({ onSelect, isDark }: Props) {
           onKeyDown={handleKeyDown}
           autoFocus
           onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-          placeholder="Search a place…"
+          placeholder={txt.searchPlaceholder}
           className={`flex-1 text-sm outline-none min-w-0 ${t.input}`}
         />
         {query && (
-          <button onClick={handleClear} className={`flex-shrink-0 transition-colors ${t.clearBtn}`} data-tooltip="Clear search">
+          <button onClick={handleClear} className={`flex-shrink-0 transition-colors ${t.clearBtn}`} data-tooltip={txt.clearSearch}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>

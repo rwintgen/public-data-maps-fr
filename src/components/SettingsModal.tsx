@@ -6,6 +6,8 @@ import SavedSearches from './SavedSearches'
 import UsageTracker from './UsageTracker'
 import { PRESET_FILTERS, PRESET_GROUPS } from '@/lib/presets'
 import { TIER_LIMITS, getResultLimit, MAX_ENTERPRISE_RESULT_LIMIT, canUsePresets, type UserTier } from '@/lib/usage'
+import { useAppLocale, tGroup } from '@/lib/useAppLocale'
+import type { AppLocale } from '@/lib/useAppLocale'
 
 interface AIOverviewEntry {
   siret: string
@@ -117,6 +119,7 @@ export default function SettingsModal({
   })
   const [deleteActive, setDeleteActive] = useState(false)
   const [deleteEmail, setDeleteEmail] = useState('')
+  const { locale, setLocale, t: txt } = useAppLocale()
 
   const toggleSection = (key: string, setter: (v: boolean) => void, current: boolean) => {
     const next = !current
@@ -204,7 +207,7 @@ export default function SettingsModal({
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium truncate ${t.title}`}>{user.displayName ?? 'User'}</p>
+                  <p className={`text-sm font-medium truncate ${t.title}`}>{user.displayName ?? txt.user}</p>
                   {user.email && (
                     <div className="flex items-center gap-1">
                       <p className={`text-xs md:text-[11px] truncate ${t.label}`}>{user.email}</p>
@@ -213,14 +216,14 @@ export default function SettingsModal({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
                       ) : user.providerId === 'password' ? (
-                        <span className="text-[11px] md:text-[9px] font-medium text-amber-500 flex-shrink-0">unverified</span>
+                        <span className="text-[11px] md:text-[9px] font-medium text-amber-500 flex-shrink-0">{txt.unverified}</span>
                       ) : null}
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <h2 className={`text-sm font-semibold ${t.title}`}>Settings</h2>
+              <h2 className={`text-sm font-semibold ${t.title}`}>{txt.settingsSection}</h2>
             )}
             <CloseButton onClick={handleClose} isDark={isDark} />
           </div>
@@ -238,19 +241,19 @@ export default function SettingsModal({
                 )}
                 <span className="text-xs md:text-[11px] font-medium truncate">{orgName}</span>
                 {(orgRole === 'owner' || orgRole === 'admin') && (
-                  <a href="/org" onClick={handleClose} className={`text-xs md:text-[10px] font-medium ml-auto flex-shrink-0 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors`}>Manage</a>
+                  <a href="/org" onClick={handleClose} className={`text-xs md:text-[10px] font-medium ml-auto flex-shrink-0 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'} transition-colors`}>{txt.manage}</a>
                 )}
               </div>
             ) : userTier === 'enterprise' && !orgId ? (
               <a href="/org" onClick={handleClose} className="flex items-center gap-1.5 mb-1.5 text-xs md:text-[11px] font-medium text-violet-500 hover:text-violet-400 transition-colors">
-                <span>+ Set up your organization</span>
+                <span>{txt.setupYourOrg}</span>
               </a>
             ) : null}
             <button
               onClick={toggleAll}
               className={`text-xs md:text-[10px] font-medium transition-colors ${t.chevronBtn}`}
             >
-              {allOpen ? 'Collapse all' : 'Expand all'}
+              {allOpen ? txt.collapseAll : txt.expandAll}
             </button>
           </div>
 
@@ -263,7 +266,7 @@ export default function SettingsModal({
                   onClick={() => toggleSection('settings', setSettingsOpen, settingsOpen)}
                   className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.chevronBtn}`}
                 >
-                  <span>Settings</span>
+                  <span>{txt.settingsSection}</span>
                   <svg className={`w-3 h-3 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -271,20 +274,20 @@ export default function SettingsModal({
                 {settingsOpen && (
                   <div className="mt-2 space-y-3">
               <div>
-                <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Theme</div>
+                <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.theme}</div>
                 <div className={`flex rounded-lg border overflow-hidden ${t.segmentBorder}`}>
                   {([
-                    { mode: 'system' as const, label: 'Auto', icon: (
+                    { mode: 'system' as const, label: txt.themeAuto, icon: (
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     )},
-                    { mode: 'light' as const, label: 'Light', icon: (
+                    { mode: 'light' as const, label: txt.themeLight, icon: (
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
                       </svg>
                     )},
-                    { mode: 'dark' as const, label: 'Dark', icon: (
+                    { mode: 'dark' as const, label: txt.themeDark, icon: (
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
                       </svg>
@@ -305,12 +308,12 @@ export default function SettingsModal({
               </div>
 
               <div>
-                <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Map Style</div>
+                <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.mapStyle}</div>
                 <div className={`flex rounded-lg border overflow-hidden ${t.segmentBorder}`}>
                   {([
-                    { style: 'default' as const, label: 'Default' },
-                    { style: 'themed' as const, label: 'Themed' },
-                    { style: 'satellite' as const, label: 'Satellite' },
+                    { style: 'default' as const, label: txt.mapDefault },
+                    { style: 'themed' as const, label: txt.mapThemed },
+                    { style: 'satellite' as const, label: txt.mapSatellite },
                   ]).map(({ style, label }) => (
                     <button
                       key={style}
@@ -325,22 +328,42 @@ export default function SettingsModal({
                 </div>
               </div>
 
+              <div>
+                <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.language}</div>
+                <div className={`flex rounded-lg border overflow-hidden ${t.segmentBorder}`}>
+                  {([
+                    { code: 'fr' as AppLocale, label: txt.french },
+                    { code: 'en' as AppLocale, label: txt.english },
+                  ]).map(({ code, label }) => (
+                    <button
+                      key={code}
+                      onClick={() => setLocale(code)}
+                      className={`flex-1 py-1.5 text-xs md:text-[11px] font-medium transition-colors ${
+                        locale === code ? t.segmentActive : t.segmentInactive
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {user && subscriptionStatus === 'past_due' && userTier !== 'enterprise' && (
                 <div className={`rounded-lg border p-2.5 ${isDark ? 'border-red-500/30 bg-red-500/10' : 'border-red-200 bg-red-50'}`}>
-                  <p className={`text-xs md:text-[11px] font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Payment failed</p>
-                  <p className={`text-xs md:text-[10px] mt-0.5 ${isDark ? 'text-red-400/80' : 'text-red-600'}`}>Update your payment method to avoid losing access.</p>
+                  <p className={`text-xs md:text-[11px] font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>{txt.paymentFailed}</p>
+                  <p className={`text-xs md:text-[10px] mt-0.5 ${isDark ? 'text-red-400/80' : 'text-red-600'}`}>{txt.updatePaymentDesc}</p>
                   <button
                     onClick={() => { onManagePlan(); handleClose() }}
                     className={`text-xs md:text-[10px] font-medium mt-1.5 px-2.5 py-1 rounded-lg transition-colors ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
                   >
-                    Update payment method →
+                    {txt.updatePaymentBtn}
                   </button>
                 </div>
               )}
 
               {user && userTier !== 'enterprise' && (
                 <div>
-                  <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Plan</div>
+                  <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.plan}</div>
                   <button
                     onClick={() => {
                       if (userTier !== 'free') { onManagePlan(); handleClose() }
@@ -348,7 +371,7 @@ export default function SettingsModal({
                     }}
                     className={`w-full text-xs md:text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn} ${t.btnHover}`}
                   >
-                    {userTier === 'free' ? 'Upgrade plan' : 'Manage plan'}
+                    {userTier === 'free' ? txt.upgradePlan : txt.managePlan}
                   </button>
                 </div>
               )}
@@ -365,7 +388,7 @@ export default function SettingsModal({
                   onClick={() => toggleSection('data', setDataOpen, dataOpen)}
                   className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.chevronBtn}`}
                 >
-                  <span>Data Settings</span>
+                  <span>{txt.dataSettings}</span>
                   <svg className={`w-3 h-3 transition-transform ${dataOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -373,36 +396,36 @@ export default function SettingsModal({
                 {dataOpen && (
                   <div className="mt-2 space-y-3">
                     <div>
-                      <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Default Fields</div>
+                      <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.defaultFields}</div>
                       <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => onFieldsModal('global')}
                             className={`text-xs md:text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
                           >
-                            Global ({globalVisibleCount})
+                            {txt.global} ({globalVisibleCount})
                           </button>
                           <button
                             onClick={() => onFieldsModal('list')}
                             className={`text-xs md:text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
                           >
-                            List ({listColumns.length})
+                            {txt.list} ({listColumns.length})
                           </button>
                           <button
                             onClick={() => onFieldsModal('popup')}
                             className={`text-xs md:text-[11px] font-medium py-1.5 rounded-lg border transition-colors ${t.btn}`}
                           >
-                            Popup ({popupColumns.length})
+                            {txt.popup} ({popupColumns.length})
                           </button>
                         </div>
                         <p className={`text-xs md:text-[10px] ${t.label}`}>
-                          Global controls hidden fields. List and Popup control visible fields for each view.
+                          {txt.defaultFieldsDesc}
                         </p>
                       </div>
                     </div>
 
                     <div>
-                      <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Default Quick Filters</div>
+                      <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.defaultQuickFilters}</div>
                       <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
                         {canUsePresets(userTier) ? (
                           <div className="space-y-1.5">
@@ -411,7 +434,7 @@ export default function SettingsModal({
                               const activeInGroup = presets.filter((p) => defaultPresets.includes(p.id))
                               return (
                                 <div key={group} className="mb-1 last:mb-0">
-                                  <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
+                                  <SectionTitle isDark={isDark} className="mb-0.5">{tGroup(txt, group)}</SectionTitle>
                                   <div className="flex flex-wrap gap-1 items-center">
                                     {presets.map((preset) => {
                                       const active = defaultPresets.includes(preset.id)
@@ -419,7 +442,7 @@ export default function SettingsModal({
                                       return (
                                         <span key={preset.id} className="contents">
                                           {active && activeIdx > 0 && (
-                                            <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                                            <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{txt.orLabel}</span>
                                           )}
                                           <PresetPill
                                             label={preset.label}
@@ -443,16 +466,16 @@ export default function SettingsModal({
                                 onClick={() => onDefaultPresetsChange([])}
                                 className={`text-xs md:text-[10px] font-medium mt-1 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                               >
-                                Clear all
+                                {txt.clearAll}
                               </button>
                             )}
                             <p className={`text-xs md:text-[10px] ${t.label}`}>
-                              These quick filters will be automatically selected as pre-search filters on every new search.
+                              {txt.defaultQuickFiltersDesc}
                             </p>
                           </div>
                         ) : (
                           <p className={`text-xs md:text-[10px] ${t.label}`}>
-                            Default quick filters are managed automatically on your current plan.
+                            {txt.defaultQuickFiltersFree}
                           </p>
                         )}
                       </div>
@@ -467,7 +490,7 @@ export default function SettingsModal({
                       }
                       return (
                         <div>
-                          <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Result Limit</div>
+                          <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.resultLimitLabel}</div>
                           <div className={`rounded-lg border p-3 space-y-2.5 ${isDark ? 'bg-white/3 border-white/8' : 'bg-gray-50/50 border-gray-200'}`}>
                             <input
                               type="range"
@@ -499,13 +522,13 @@ export default function SettingsModal({
                                   isDark ? 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                                 }`}
                               >
-                                Max
+                                {txt.max}
                               </button>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className={`text-xs md:text-[10px] ${t.label}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
                               {currentValue > 50_000 && (
-                                <span className="text-xs md:text-[10px] font-medium text-amber-500">⚠ May be slow</span>
+                                <span className="text-xs md:text-[10px] font-medium text-amber-500">{txt.maySlow}</span>
                               )}
                             </div>
                           </div>
@@ -541,7 +564,7 @@ export default function SettingsModal({
                     onClick={() => toggleSection('ai', setAiOpen, aiOpen)}
                     className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.chevronBtn}`}
                   >
-                    <span>AI Overviews</span>
+                    <span>{txt.aiOverviews}</span>
                     <svg className={`w-3 h-3 transition-transform ${aiOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -549,7 +572,7 @@ export default function SettingsModal({
                   {aiOpen && (
                     <div className="mt-2">
                       {aiOverviewsList.length === 0 ? (
-                        <p className={`text-xs md:text-[11px] ${t.emptyText}`}>No AI overviews yet</p>
+                        <p className={`text-xs md:text-[11px] ${t.emptyText}`}>{txt.noAiOverviews}</p>
                       ) : (
                         <div className="space-y-1 max-h-48 overflow-y-auto">
                           {aiOverviewsList.map((entry) => (
@@ -596,18 +619,18 @@ export default function SettingsModal({
             {user && userTier !== 'enterprise' && !orgId && (
               <div className={`border-t ${t.sectionBorder}`}>
                 <div className="px-4 py-3">
-                  <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>Danger Zone</div>
+                  <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.label}`}>{txt.dangerZone}</div>
                   {!deleteActive ? (
                     <button
                       onClick={() => setDeleteActive(true)}
                       className={`text-xs font-medium transition-colors ${t.signOutBtn}`}
                     >
-                      Delete account
+                      {txt.deleteAccount}
                     </button>
                   ) : (
                     <div className="space-y-1.5">
                       <p className={`text-xs md:text-[11px] ${t.dangerText}`}>
-                        Type your email to confirm deletion
+                        {txt.typeEmailToConfirm}
                       </p>
                       <input
                         type="email"
@@ -624,13 +647,13 @@ export default function SettingsModal({
                             deleteEmail === user.email ? t.dangerBtn : t.dangerBtnDisabled
                           }`}
                         >
-                          Delete permanently
+                          {txt.deletePermanently}
                         </button>
                         <button
                           onClick={() => { setDeleteActive(false); setDeleteEmail('') }}
                           className={`text-xs font-medium transition-colors ${t.cancelBtn}`}
                         >
-                          Cancel
+                          {txt.cancel}
                         </button>
                       </div>
                     </div>
@@ -648,12 +671,12 @@ export default function SettingsModal({
                   onClick={() => { onSignOut(); handleClose() }}
                   className={`text-xs font-medium transition-colors ${t.signOutBtn}`}
                 >
-                  Sign Out
+                  {txt.signOut}
                 </button>
                 {prefsSaved && (
                   <span className={`text-xs md:text-[10px] flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'} animate-prefs-saved`}>
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                    Preferences saved
+                    {txt.preferencesSaved}
                   </span>
                 )}
               </div>
@@ -663,7 +686,7 @@ export default function SettingsModal({
                   onClick={() => { onSignIn(); handleClose() }}
                   className={`w-full flex items-center justify-center gap-2 text-sm font-medium border rounded-lg px-3 py-2 transition-all ${t.signInBtn}`}
                 >
-                  Sign in / Create account
+                  {txt.signInCreateAccount}
                 </button>
               </div>
             )}

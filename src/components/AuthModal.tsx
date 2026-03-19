@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase'
 import { doc, setDoc } from 'firebase/firestore'
 import { Modal, CloseButton } from '@/components/ui'
 import { buildDefaultFieldPrefs } from '@/lib/defaultFields'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface Props {
   isDark: boolean
@@ -37,6 +38,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [verificationSent, setVerificationSent] = useState(false)
+  const { t: txt } = useAppLocale()
 
   const getCurrentColumns = async (): Promise<string[]> => {
     try {
@@ -65,12 +67,12 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
     switch (code) {
       case 'auth/user-not-found':
       case 'auth/wrong-password':
-      case 'auth/invalid-credential': return 'Invalid email or password.'
-      case 'auth/email-already-in-use': return 'An account with this email already exists.'
-      case 'auth/weak-password': return 'Password must be at least 6 characters.'
-      case 'auth/invalid-email': return 'Please enter a valid email address.'
-      case 'auth/too-many-requests': return 'Too many attempts. Please try again later.'
-      default: return 'Something went wrong. Please try again.'
+      case 'auth/invalid-credential': return txt.invalidCredentials
+      case 'auth/email-already-in-use': return txt.emailInUse
+      case 'auth/weak-password': return txt.weakPassword
+      case 'auth/invalid-email': return txt.invalidEmail
+      case 'auth/too-many-requests': return txt.tooManyRequests
+      default: return txt.genericError
     }
   }
 
@@ -98,7 +100,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      setError('Enter your email address first.')
+      setError(txt.invalidEmail)
       return
     }
     setResetLoading(true)
@@ -180,7 +182,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
                 onClick={() => { setTab(t_); setError(''); setResetSent(false); setVerificationSent(false) }}
                 className={`pb-2.5 text-sm font-medium transition-colors ${tab === t_ ? t.tabActive : t.tab}`}
               >
-                {t_ === 'signin' ? 'Sign in' : 'Create account'}
+                {t_ === 'signin' ? txt.signInTab : txt.createAccount}
               </button>
             ))}
           </div>
@@ -190,18 +192,18 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
         <form onSubmit={handleEmailAuth} className="space-y-3">
           {tab === 'signup' && (
             <div>
-              <label className={`block text-xs font-medium mb-1 ${t.label}`}>Name (optional)</label>
+              <label className={`block text-xs font-medium mb-1 ${t.label}`}>{txt.nameOptional}</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
+                placeholder={txt.yourName}
                 className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all ${t.input}`}
               />
             </div>
           )}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${t.label}`}>Email</label>
+            <label className={`block text-xs font-medium mb-1 ${t.label}`}>{txt.email}</label>
             <input
               type="email"
               value={email}
@@ -213,12 +215,12 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
             />
           </div>
           <div>
-            <label className={`block text-xs font-medium mb-1 ${t.label}`}>Password</label>
+            <label className={`block text-xs font-medium mb-1 ${t.label}`}>{txt.password}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={tab === 'signup' ? 'At least 6 characters' : '••••••••'}
+              placeholder={tab === 'signup' ? txt.atLeast6Chars : '••••••••'}
               required
               className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all ${t.input}`}
             />
@@ -229,20 +231,20 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
                 disabled={resetLoading}
                 className={`text-[11px] mt-1 transition-colors ${t.forgotBtn}`}
               >
-                {resetLoading ? 'Sending…' : 'Forgot password?'}
+                {resetLoading ? txt.sendingReset : txt.forgotPassword}
               </button>
             )}
           </div>
 
           {resetSent && (
             <div className={`text-xs rounded-lg border px-3 py-2 ${t.successText}`}>
-              Password reset email sent. Check your inbox.
+              {txt.resetEmailSent}
             </div>
           )}
 
           {verificationSent && (
             <div className={`text-xs rounded-lg border px-3 py-2 ${t.successText}`}>
-              Verification email sent. Please check your inbox.
+              {txt.verificationSent}
             </div>
           )}
 
@@ -255,13 +257,13 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
             disabled={loading}
             className={`w-full rounded-lg py-2.5 text-sm font-semibold transition-all ${t.primaryBtn}`}
           >
-            {loading ? 'Please wait…' : tab === 'signin' ? 'Sign in' : 'Create account'}
+            {loading ? txt.pleaseWait : tab === 'signin' ? txt.signInTab : txt.createAccount}
           </button>
         </form>
 
         <div className="flex items-center gap-3 my-4">
           <div className={`flex-1 border-t ${t.divider}`} />
-          <span className={`text-xs ${t.dividerText}`}>or</span>
+          <span className={`text-xs ${t.dividerText}`}>{txt.or}</span>
           <div className={`flex-1 border-t ${t.divider}`} />
         </div>
 
@@ -275,7 +277,7 @@ export default function AuthModal({ isDark, onClose, isSigningIn }: Props) {
             <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Continue with Google
+          {txt.continueGoogle}
         </button>
         </>
       )}

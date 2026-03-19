@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal, CloseButton, Checkbox } from '@/components/ui'
 import { getDefaultHiddenFields, getDefaultListColumns, getDefaultPopupColumns } from '@/lib/defaultFields'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface Props {
   columns: string[]
@@ -31,6 +32,7 @@ export default function ColumnConfig({
 }: Props) {
   const [tab, setTab] = useState<'global' | 'list' | 'popup'>(initialTab ?? 'global')
   const [query, setQuery] = useState('')
+  const { t: txt } = useAppLocale()
 
   const visibleColumns = columns.filter((col) => !hiddenFields.includes(col))
 
@@ -109,7 +111,7 @@ export default function ColumnConfig({
     <Modal isDark={isDark} onClose={onClose} zIndex="z-[9000]" className={`w-full md:w-[400px] max-h-[85vh] flex flex-col overflow-hidden ${t.bg}`}>
       {(handleClose) => (<>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <h3 className={`text-sm font-semibold ${t.title}`}>Default Fields</h3>
+        <h3 className={`text-sm font-semibold ${t.title}`}>{txt.defaultFieldsTitle}</h3>
         <CloseButton onClick={handleClose} isDark={isDark} />
       </div>
 
@@ -125,16 +127,16 @@ export default function ColumnConfig({
                 : `${t.tab} border-transparent`
             }`}
           >
-            {t_ === 'global' ? 'Global' : t_ === 'list' ? 'Result List' : 'Map Popup'}
+            {t_ === 'global' ? txt.globalTab : t_ === 'list' ? txt.resultList : txt.mapPopup}
           </button>
         ))}
       </div>
 
       {/* Select All/None */}
       <div className="flex gap-3 px-4 pt-2">
-        <button onClick={allOn} className={`text-[10px] font-medium ${t.allBtn}`}>Select all</button>
-        <button onClick={allOff} className={`text-[10px] font-medium ${t.allBtn}`}>Select none</button>
-        <button onClick={restoreDefaults} className={`text-[10px] font-medium ${t.allBtn}`}>Restore default</button>
+        <button onClick={allOn} className={`text-[10px] font-medium ${t.allBtn}`}>{txt.selectAll}</button>
+        <button onClick={allOff} className={`text-[10px] font-medium ${t.allBtn}`}>{txt.selectNone}</button>
+        <button onClick={restoreDefaults} className={`text-[10px] font-medium ${t.allBtn}`}>{txt.restoreDefault}</button>
       </div>
 
       <div className="px-4 pt-2 pb-1">
@@ -142,7 +144,7 @@ export default function ColumnConfig({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search fields..."
+          placeholder={txt.searchFields}
           className={`w-full rounded-md border px-2 py-1 text-xs outline-none transition-colors ${
             isDark
               ? 'bg-white/5 border-white/10 text-white placeholder-gray-600 focus:border-white/30'
@@ -168,7 +170,7 @@ export default function ColumnConfig({
         })}
         {filteredColumns.length === 0 && (
           <p className={`px-2 py-2 text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-            No fields match your search.
+            {txt.noFieldsMatch}
           </p>
         )}
       </div>

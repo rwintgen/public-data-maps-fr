@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Modal, CloseButton, Button, InfoTooltip } from '@/components/ui'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface AgentStep {
   id: string
@@ -28,6 +29,7 @@ export default function AIOverview({ company, isDark, onClose, userToken, savedO
   const [error, setError] = useState('')
   const [sources, setSources] = useState<string[]>(savedOverview?.sources ?? [])
   const [done, setDone] = useState(!!savedOverview)
+  const { t: txt } = useAppLocale()
   const contentRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -175,10 +177,10 @@ export default function AIOverview({ company, isDark, onClose, userToken, savedO
               <svg className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-violet-400' : 'text-violet-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
-              <h2 className={`text-base font-semibold leading-tight ${t.title}`}>AI Overview</h2>
+              <h2 className={`text-base font-semibold leading-tight ${t.title}`}>{txt.aiOverviewTitle}</h2>
               {!savedOverview && (
                 <InfoTooltip
-                  text="This overview will be saved once generated. You won't need to regenerate it if you come back to this company."
+                  text={txt.aiOverviewTooltip}
                   isDark={isDark}
                   position="bottom"
                 />
@@ -231,7 +233,7 @@ export default function AIOverview({ company, isDark, onClose, userToken, savedO
 
             {done && sources.length > 0 && (
               <div className={`mt-4 px-3 py-2.5 rounded-lg border ${t.sourceBg}`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.sourceText}`}>Search queries used</p>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 ${t.sourceText}`}>{txt.searchQueriesUsed}</p>
                 <div className="space-y-0.5">
                   {sources.map((s, i) => (
                     <p key={i} className={`text-[11px] ${t.sourceText}`}>• {s}</p>
@@ -245,7 +247,7 @@ export default function AIOverview({ company, isDark, onClose, userToken, savedO
         {done && !error && (
           <div className={`px-5 py-3 border-t ${t.divider}`}>
             <Button onClick={handleClose} isDark={isDark} className="w-full py-2.5">
-              Done
+              {txt.done}
             </Button>
           </div>
         )}

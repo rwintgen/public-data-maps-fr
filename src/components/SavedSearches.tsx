@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { collection, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface Filter {
   column: string
@@ -44,6 +45,7 @@ export default function SavedSearches({
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
   const user = auth.currentUser
+  const { t: txt } = useAppLocale()
 
   useEffect(() => {
     if (user) {
@@ -97,7 +99,7 @@ export default function SavedSearches({
           onClick={toggleOpen}
           className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${t.label}`}
         >
-          <span>Saved Searches</span>
+          <span>{txt.savedSearchesTitle}</span>
           <svg
             className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
             fill="none"
@@ -118,7 +120,7 @@ export default function SavedSearches({
           <div className={`pointer-events-none absolute right-0 bottom-full mb-2 w-52 rounded-lg border px-3 py-2 text-xs md:text-[11px] leading-relaxed shadow-xl opacity-0 group-hover/info:opacity-100 transition-opacity z-[9999] ${
             isDark ? 'bg-gray-800 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-600'
           }`}>
-            Saves the current map area along with any active filters and sort settings, so you can restore the exact same search later.
+            {txt.savedSearchInfo}
           </div>
         </div>
       </div>
@@ -126,7 +128,7 @@ export default function SavedSearches({
       {isOpen && (
         <div className="mt-2 space-y-1 max-h-[35vh] overflow-y-auto overflow-x-hidden">
           {savedSearches.length === 0 && (
-            <p className={`text-xs py-2 ${t.emptyText}`}>No saved searches yet.</p>
+            <p className={`text-xs py-2 ${t.emptyText}`}>{txt.noSavedSearches}</p>
           )}
           {savedSearches.map((area) => (
             <div
@@ -135,18 +137,18 @@ export default function SavedSearches({
             >
               {pendingDeleteId === area.id ? (
                 <div className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5">
-                  <span className={`text-xs flex-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Delete &ldquo;{area.name}&rdquo;?</span>
+                  <span className={`text-xs flex-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{txt.deleteConfirm(area.name)}</span>
                   <button
                     onClick={() => handleDeleteConfirm(area)}
                     className="text-xs md:text-[11px] font-semibold text-red-400 hover:text-red-300 transition-colors px-1.5 py-0.5 rounded"
                   >
-                    Delete
+                    {txt.deleteBtn}
                   </button>
                   <button
                     onClick={() => setPendingDeleteId(null)}
                     className={`text-xs md:text-[11px] font-medium transition-colors px-1.5 py-0.5 rounded ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    Cancel
+                    {txt.cancel}
                   </button>
                 </div>
               ) : renamingId === area.id ? (
@@ -163,13 +165,13 @@ export default function SavedSearches({
                     onClick={() => handleRename(area.id)}
                     className={`text-xs md:text-[11px] font-semibold transition-colors px-1 py-0.5 rounded ${isDark ? 'text-gray-300 hover:text-white' : 'text-violet-500 hover:text-violet-400'}`}
                   >
-                    Save
+                    {txt.save}
                   </button>
                   <button
                     onClick={() => { setRenamingId(null); setRenameValue('') }}
                     className={`text-xs md:text-[11px] font-medium transition-colors px-1 py-0.5 rounded ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    Cancel
+                    {txt.cancel}
                   </button>
                 </div>
               ) : (
@@ -198,7 +200,7 @@ export default function SavedSearches({
                   <button
                     onClick={(e) => { e.stopPropagation(); setRenamingId(area.id); setRenameValue(area.name) ; setTimeout(() => renameInputRef.current?.focus(), 50) }}
                     className={`flex-shrink-0 w-8 h-8 md:w-6 md:h-6 mr-0.5 rounded flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all ${isDark ? 'text-gray-600 hover:text-gray-300' : 'text-gray-400 hover:text-violet-600'}`}
-                    data-tooltip="Rename search"
+                    data-tooltip={txt.renameSearch}
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -207,7 +209,7 @@ export default function SavedSearches({
                   <button
                     onClick={(e) => { e.stopPropagation(); setPendingDeleteId(area.id) }}
                     className={`flex-shrink-0 w-8 h-8 md:w-6 md:h-6 mr-1 rounded flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all ${t.deleteBtn}`}
-                    data-tooltip="Delete search"
+                    data-tooltip={txt.deleteSearch}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />

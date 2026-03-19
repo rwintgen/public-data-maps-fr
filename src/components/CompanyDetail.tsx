@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Modal, CloseButton, Button } from '@/components/ui'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 interface Props {
   company: any
@@ -19,6 +20,7 @@ interface Props {
  * Animates in/out with scale + opacity. Includes an AI inquiry button gated by paywall.
  */
 export default function CompanyDetail({ company, displayColumns, isDark, onClose, onAskAI, onViewAI, hasCachedOverview }: Props) {
+  const { t: txt } = useAppLocale()
   const [aiLoading, setAiLoading] = useState(false)
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
 
@@ -52,7 +54,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div className="min-w-0 flex-1 pr-4">
             <h2 className={`text-base font-semibold leading-tight ${t.title}`}>
-              {fields["D\u00e9nomination de l'unit\u00e9 l\u00e9gale"] || fields["D\u00e9nomination usuelle de l'\u00e9tablissement"] || fields.SIRET || 'Company Details'}
+              {fields["D\u00e9nomination de l'unit\u00e9 l\u00e9gale"] || fields["D\u00e9nomination usuelle de l'\u00e9tablissement"] || fields.SIRET || txt.companyDetails}
             </h2>
             {company.lat && company.lon && (
               <p className={`text-xs md:text-[10px] mt-1 font-mono ${t.coords}`}>
@@ -98,7 +100,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
-                View AI Overview
+                {txt.viewAiOverview}
               </Button>
               <Button
                 onClick={() => onAskAI(company)}
@@ -110,7 +112,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Try again
+                {txt.tryAgain}
               </Button>
             </div>
           ) : (
@@ -123,7 +125,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
-              Ask AI about this company
+              {txt.askAi}
             </Button>
           )}
         </div>

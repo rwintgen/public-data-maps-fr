@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal, CloseButton, Checkbox } from '@/components/ui'
 import { canExportPremium, type UserTier } from '@/lib/usage'
+import { useAppLocale } from '@/lib/useAppLocale'
 
 type ExportFormat = 'csv' | 'json' | 'excel' | 'xml' | 'geojson'
 
@@ -31,6 +32,7 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
   const [selectedCols, setSelectedCols] = useState<string[]>([...displayColumns])
   const [format, setFormat] = useState<ExportFormat>('csv')
   const isPremium = canExportPremium(userTier)
+  const { t: txt } = useAppLocale()
 
   const toggleCol = (col: string) => {
     setSelectedCols((prev) =>
@@ -150,15 +152,15 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
       {(handleClose) => (<>
         <div className="flex items-start justify-between px-5 pt-5 pb-3">
           <div>
-            <h2 className={`text-base font-semibold ${t.title}`}>Export Results</h2>
-            <p className={`text-xs mt-0.5 ${t.subtitle}`}>{companies.length} companies</p>
+            <h2 className={`text-base font-semibold ${t.title}`}>{txt.exportResults}</h2>
+            <p className={`text-xs mt-0.5 ${t.subtitle}`}>{txt.companies(companies.length)}</p>
           </div>
             <CloseButton onClick={handleClose} isDark={isDark} />
         </div>
 
         {/* Format selection */}
         <div className={`px-5 pb-3 border-b ${t.divider}`}>
-          <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>Format</div>
+          <div className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest mb-2 ${t.sectionLabel}`}>{txt.format}</div>
           <div className="flex flex-wrap gap-2">
             {FORMAT_META.map((f) => {
               const locked = f.premium && !isPremium
@@ -166,7 +168,7 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
                 <button
                   key={f.id}
                   onClick={() => {
-                    if (locked) { onPaywall('premium export formats'); return }
+                    if (locked) { onPaywall(txt.premiumFormats); return }
                     setFormat(f.id)
                   }}
                   className={`flex items-center gap-1.5 text-sm font-medium py-2 px-3 rounded-lg border transition-all ${
@@ -190,9 +192,9 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
         {/* Column selection */}
         <div className="px-5 pt-3 pb-1">
           <div className="flex items-center gap-3 mb-2">
-            <span className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest ${t.sectionLabel}`}>Fields</span>
-            <button onClick={() => setSelectedCols([...displayColumns])} className={`text-xs md:text-[10px] font-medium ${t.allBtn}`}>All</button>
-            <button onClick={() => setSelectedCols([])} className={`text-xs md:text-[10px] font-medium ${t.allBtn}`}>None</button>
+            <span className={`text-xs md:text-[10px] font-semibold uppercase tracking-widest ${t.sectionLabel}`}>{txt.fields}</span>
+            <button onClick={() => setSelectedCols([...displayColumns])} className={`text-xs md:text-[10px] font-medium ${t.allBtn}`}>{txt.all}</button>
+            <button onClick={() => setSelectedCols([])} className={`text-xs md:text-[10px] font-medium ${t.allBtn}`}>{txt.none}</button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-3 max-h-[300px]">
@@ -212,7 +214,7 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
         </div>
 
         <div className={`text-xs md:text-[10px] px-5 py-1 ${t.subtitle}`}>
-          Coordinates (lat/lon) are always included.
+          {txt.coordsIncluded}
         </div>
 
         {/* Export button */}
@@ -222,7 +224,7 @@ export default function ExportModal({ companies, displayColumns, isDark, userTie
             disabled={selectedCols.length === 0}
             className={`w-full rounded-lg py-2.5 text-sm font-semibold transition-all ${t.exportBtn}`}
           >
-            Export {format.toUpperCase()} ({selectedCols.length} field{selectedCols.length !== 1 ? 's' : ''})
+            {txt.exportBtn(format.toUpperCase(), selectedCols.length)}
           </button>
         </div>
       </>)}

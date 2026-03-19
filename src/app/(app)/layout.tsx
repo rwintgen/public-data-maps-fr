@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { AppLocaleProvider } from '@/lib/useAppLocale'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -8,5 +9,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => { document.body.classList.remove('app-shell') }
   }, [])
 
-  return <>{children}</>
+  return <AppLocaleProvider>{children}</AppLocaleProvider>
 }

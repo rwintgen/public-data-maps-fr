@@ -13,6 +13,7 @@ import AIOverview from '@/components/AIOverview'
 import SettingsModal from '@/components/SettingsModal'
 import { Modal, CloseButton, PresetPill, CardSection, SectionTitle, ConfirmModal } from '@/components/ui'
 import { applyPresets, PRESET_FILTERS, PRESET_GROUPS, DEFAULT_PRE_QUERY_PRESETS, PRESET_COLUMN_KEYS, type CustomPreset } from '@/lib/presets'
+import { useAppLocale, tPreset, tGroup } from '@/lib/useAppLocale'
 import { getDefaultHiddenFields, getDefaultListColumns, getDefaultPopupColumns, DEFAULT_LIST_COLS, DEFAULT_POPUP_COLS } from '@/lib/defaultFields'
 import {
   type UserTier,
@@ -97,6 +98,7 @@ export default function Home() {
   const [popupColumns, setPopupColumns] = useState<string[]>(DEFAULT_POPUP_COLS)
 
   const [fieldsModalTab, setFieldsModalTab] = useState<'global' | 'list' | 'popup' | null>(null)
+  const { t: txt } = useAppLocale()
 
   const [sortCriteria, setSortCriteria] = useState<{ column: string; dir: 'asc' | 'desc' }[]>([])
   const [filters, setFilters] = useState<{ column: string; operator: 'contains' | 'equals' | 'empty'; negate: boolean; value: string; joinOr?: boolean }[]>([])
@@ -124,9 +126,6 @@ export default function Home() {
   const [orgConnectorsLoaded, setOrgConnectorsLoaded] = useState(false)
   const [orgQuickFilters, setOrgQuickFilters] = useState<CustomPreset[]>([])
   const [preQueryOrgIds, setPreQueryOrgIds] = useState<string[]>([])
-
-  const [viewportClusters, setViewportClusters] = useState<{ lat: number; lng: number; count: number }[]>([])
-  const clusterAbort = useRef<AbortController | null>(null)
 
   const isDark = themeMode === 'system' ? systemDark : themeMode === 'dark'
 
@@ -388,26 +387,6 @@ export default function Home() {
   }
 
   const [orgSetupPrompt, setOrgSetupPrompt] = useState(false)
-
-  const fetchClusters = useCallback(async (bounds: { west: number; south: number; east: number; north: number; zoom: number }) => {
-    if (clusterAbort.current) clusterAbort.current.abort()
-    const controller = new AbortController()
-    clusterAbort.current = controller
-    try {
-      const presetStr = preQueryPresets.length > 0 ? `&presets=${preQueryPresets.join(',')}` : ''
-      const res = await fetch(
-        `/api/clusters?bbox=${bounds.west},${bounds.south},${bounds.east},${bounds.north}&zoom=${bounds.zoom}${presetStr}`,
-        { signal: controller.signal }
-      )
-      if (!res.ok) return
-      const data = await res.json()
-      if (!controller.signal.aborted) {
-        setViewportClusters(data.clusters ?? [])
-      }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') console.warn('[clusters] fetch error:', err)
-    }
-  }, [preQueryPresets])
 
   const handleSearch = async (geometry: any) => {
     if (searchAbort.current) {
@@ -963,14 +942,14 @@ export default function Home() {
   const bootReady = bootSteps.auth && bootSteps.columns && bootSteps.preferences && bootSteps.account
   const bootProgress = [bootSteps.auth, bootSteps.columns, bootSteps.preferences, bootSteps.account].filter(Boolean).length
   const bootLabel = !bootSteps.auth
-    ? 'Authenticating…'
+    ? txt.bootAuth
     : !bootSteps.columns
-      ? 'Fetching dataset schema…'
+      ? txt.bootSchema
       : !bootSteps.preferences
-        ? 'Loading preferences…'
+        ? txt.bootPrefs
         : !bootSteps.account
-          ? 'Retrieving account & plan…'
-          : 'Ready'
+          ? txt.bootAccount
+          : txt.bootReady
 
   if (!bootReady) {
     return (
@@ -1010,12 +989,10 @@ export default function Home() {
           restoreGeometry={restoreGeometry}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          clusters={viewportClusters}
-          onViewportChange={fetchClusters}
         />
         {isLoading && (
           <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[1000] backdrop-blur-sm text-sm font-medium px-4 py-2.5 rounded-2xl shadow-lg border ${d.loadingBg}`}>
-            <span className="inline-block animate-pulse">Searching...</span>
+            <span className="inline-block animate-pulse">{txt.searching}</span>
             <div className="mt-1.5 h-1 w-40 rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}>
               {searchProgress ? (
                 <div
@@ -1062,7 +1039,7 @@ export default function Home() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
           <span className="text-xs font-medium">
-            {companies.length > 0 ? `${companies.length.toLocaleString()} results` : 'Open panel'}
+            {companies.length > 0 ? txt.resultsCount(companies.length) : txt.openPanel}
           </span>
         </button>
       )}
@@ -1091,7 +1068,7 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-xs md:text-[11px] font-medium">
-              Showing {resultLimit.toLocaleString()}{totalMatching ? ` of ${totalMatching.toLocaleString()}` : ''} results — {userTier === 'enterprise' || userTier === 'individual' ? 'adjust your limit below' : 'zoom in or refine your area'}
+              {txt.showingResults(resultLimit, totalMatching)} — {userTier === 'enterprise' || userTier === 'individual' ? txt.adjustLimitBelow : txt.zoomOrRefine}
             </span>
           </div>
         )}
@@ -1100,7 +1077,7 @@ export default function Home() {
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
-            <span className="text-xs md:text-[11px] font-medium">Email not verified — <button onClick={() => setEmailVerifyPrompt(true)} className="underline hover:no-underline">resend verification</button> <span className="opacity-60">(check your spam folder)</span></span>
+            <span className="text-xs md:text-[11px] font-medium">{txt.emailNotVerified} — <button onClick={() => setEmailVerifyPrompt(true)} className="underline hover:no-underline">{txt.resendVerification}</button> <span className="opacity-60">{txt.checkSpam}</span></span>
           </div>
         )}
         {usageWarnings.map((msg) => (
@@ -1108,7 +1085,7 @@ export default function Home() {
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
-            <span className="text-xs md:text-[11px] font-medium">{msg} — <button onClick={() => setPaywallFeature('higher usage limits')} className="underline hover:no-underline">upgrade</button></span>
+            <span className="text-xs md:text-[11px] font-medium">{msg} — <button onClick={() => setPaywallFeature('higher usage limits')} className="underline hover:no-underline">{txt.upgrade}</button></span>
           </div>
         ))}
         {/* Header */}
@@ -1125,7 +1102,7 @@ export default function Home() {
                     ? isDark ? 'bg-white/15 border-white/25 text-white' : 'bg-violet-50 border-violet-300 text-violet-600'
                     : d.iconBtn
                 }`}
-                data-tooltip="Search a place" data-tooltip-pos="bottom"
+                data-tooltip={txt.searchPlace} data-tooltip-pos="bottom"
               >
                 <svg className="w-5 h-5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1135,7 +1112,7 @@ export default function Home() {
                 <a
                   href="/org"
                   className={`w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center border transition-all overflow-hidden ${d.iconBtn}`}
-                  data-tooltip={orgId ? 'Organization' : 'Set up organization'} data-tooltip-pos="bottom"
+                  data-tooltip={orgId ? txt.organization : txt.setupOrganization} data-tooltip-pos="bottom"
                 >
                   {orgIconUrl ? (
                     <img src={orgIconUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full rounded-lg object-cover" />
@@ -1150,7 +1127,7 @@ export default function Home() {
               <button
                   onClick={() => { setSettingsModalOpen(true); setSearchExpanded(false) }}
                   className={`relative w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center border transition-all overflow-hidden ${d.iconBtn}`}
-                  data-tooltip={user ? 'Account' : 'Settings'} data-tooltip-pos="left"
+                  data-tooltip={user ? txt.account : txt.settings} data-tooltip-pos="left"
                 >
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-full h-full rounded-lg object-cover" />
@@ -1184,10 +1161,10 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
                 </svg>
                 <span className={`text-[12px] font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Set up your organization
+                  {txt.setupOrgTitle}
                 </span>
                 <p className={`text-xs md:text-[11px] mt-1.5 text-center leading-relaxed max-w-[260px] ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  Create your organization to start browsing data and unlock all enterprise features.
+                  {txt.setupOrgDesc}
                 </p>
                 <a
                   href="/org"
@@ -1195,7 +1172,7 @@ export default function Home() {
                     isDark ? 'bg-white text-gray-900 border-white hover:bg-gray-200' : 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
                   }`}
                 >
-                  Set up organization
+                  {txt.setupOrgBtn}
                 </a>
               </div>
             )
@@ -1218,10 +1195,10 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 <span className={`text-xs md:text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Pre-search filters
+                  {txt.preSearchFilters}
                 </span>
                 <p className={`text-xs md:text-[10px] mt-1 text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Filter results server-side before the cap is applied.
+                  {txt.filterServerSide}
                 </p>
                 <button
                   onClick={() => setPaywallFeature('pre-search filters')}
@@ -1229,7 +1206,7 @@ export default function Home() {
                     isDark ? 'border-white/15 text-gray-400 hover:text-white hover:border-white/30' : 'border-gray-300 text-gray-500 hover:text-gray-700 hover:border-gray-400'
                   }`}
                 >
-                  Upgrade to Individual
+                  {txt.upgradeToIndividual}
                 </button>
               </div>
             )
@@ -1243,10 +1220,10 @@ export default function Home() {
               <div className={`flex-shrink-0 border-b px-5 py-2.5 ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-xs md:text-[10px] font-semibold uppercase tracking-wider flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Pre-search
+                    {txt.preSearch}
                   </span>
                   {locked && (
-                    <span className={`text-[11px] md:text-[9px] italic flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>locked</span>
+                    <span className={`text-[11px] md:text-[9px] italic flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{txt.locked}</span>
                   )}
                   {connectorSource && (() => {
                     const conn = orgConnectors.find((c) => c.id === connectorSource)
@@ -1277,7 +1254,7 @@ export default function Home() {
                     </span>
                   ))}
                   <span className={`text-xs md:text-[10px] flex-shrink-0 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                    max {effectiveLimit.toLocaleString()}
+                    {txt.max} {effectiveLimit.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -1290,7 +1267,7 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h2 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                      Pre-search filters
+                      {txt.preSearchFilters}
                     </h2>
                     {totalActive > 0 && (
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? 'text-gray-500 bg-white/10' : 'text-gray-500 bg-gray-100'}`}>
@@ -1298,7 +1275,7 @@ export default function Home() {
                       </span>
                     )}
                     {locked && (
-                      <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>locked</span>
+                      <span className={`text-[11px] md:text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{txt.locked}</span>
                     )}
                   </div>
                   {totalActive > 0 && !locked && (
@@ -1306,17 +1283,17 @@ export default function Home() {
                       onClick={() => { setPreQueryPresets([]); setPreQueryFilters([]); setPreQueryCustomIds([]); setPreQueryOrgIds([]) }}
                       className={`text-xs md:text-[10px] font-medium ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                     >
-                      Clear all
+                      {txt.clearAll}
                     </button>
                   )}
                 </div>
                 <p className={`text-xs md:text-[10px] leading-relaxed ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                  These filters run server-side before the result limit is applied, giving you more targeted results within your quota. Complex filters may increase query time.
+                  {txt.preSearchDesc}
                 </p>
 
                 {userTier === 'enterprise' && orgConnectors.length > 0 && (
                   <CardSection isDark={isDark}>
-                    <SectionTitle isDark={isDark} className="mb-1">Source</SectionTitle>
+                    <SectionTitle isDark={isDark} className="mb-1">{txt.source}</SectionTitle>
                     <select
                       value={connectorSource ?? ''}
                       onChange={(e) => {
@@ -1327,7 +1304,7 @@ export default function Home() {
                       disabled={locked}
                       className={`w-full text-xs md:text-[11px] px-2.5 py-1.5 rounded-lg border outline-none ${isDark ? 'bg-gray-800 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'} disabled:opacity-50`}
                     >
-                      <option value="">Public data (SIRENE)</option>
+                      <option value="">{txt.publicData}</option>
                       {orgConnectors.map((c) => (
                         <option key={c.id} value={c.id}>{c.name} ({c.rowCount.toLocaleString()})</option>
                       ))}
@@ -1342,7 +1319,7 @@ export default function Home() {
                     const activeInGroup = presets.filter((p) => preQueryPresets.includes(p.id))
                     return (
                       <div key={group} className="mb-1.5 last:mb-0">
-                        <SectionTitle isDark={isDark} className="mb-0.5">{group}</SectionTitle>
+                        <SectionTitle isDark={isDark} className="mb-0.5">{tGroup(txt, group)}</SectionTitle>
                         <div className="flex flex-wrap gap-1 items-center">
                           {presets.map((preset) => {
                             const active = preQueryPresets.includes(preset.id)
@@ -1350,7 +1327,7 @@ export default function Home() {
                             return (
                               <span key={preset.id} className="contents">
                                 {active && activeIdx > 0 && (
-                                  <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>or</span>
+                                  <span className={`text-[9px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{txt.orLabel}</span>
                                 )}
                                 <PresetPill
                                   label={preset.label}
@@ -1372,13 +1349,13 @@ export default function Home() {
                   {orgQuickFilters.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
                       <div className="flex items-center justify-between mb-0.5">
-                        <SectionTitle isDark={isDark}>Organization</SectionTitle>
+                        <SectionTitle isDark={isDark}>{txt.organization}</SectionTitle>
                         {(orgRole === 'owner' || orgRole === 'admin') && (
                           <a
                             href="/org#settings"
                             className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                           >
-                            Manage
+                            {txt.manage}
                           </a>
                         )}
                       </div>
@@ -1405,7 +1382,7 @@ export default function Home() {
                   )}
                   <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
                     <div className="flex items-center justify-between mb-0.5">
-                      <SectionTitle isDark={isDark}>Custom</SectionTitle>
+                      <SectionTitle isDark={isDark}>{txt.custom}</SectionTitle>
                       {!locked && (
                         <button
                           onClick={() => {
@@ -1414,7 +1391,7 @@ export default function Home() {
                           }}
                           className={`text-[10px] font-medium ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                          {pqCustomForm ? 'Cancel' : '+ New'}
+                          {pqCustomForm ? txt.cancel : txt.newFilter}
                         </button>
                       )}
                     </div>
@@ -1457,7 +1434,7 @@ export default function Home() {
                           type="text"
                           value={pqCustomLabel}
                           onChange={(e) => setPqCustomLabel(e.target.value)}
-                          placeholder="Label name…"
+                          placeholder={txt.labelName}
                           className={`w-full rounded border px-1.5 py-1 outline-none text-xs ${isDark ? 'bg-white/5 border-white/10 text-gray-300 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-700 placeholder-gray-400'}`}
                         />
                         <div className="flex items-center gap-1 min-w-0">
@@ -1483,9 +1460,9 @@ export default function Home() {
                             onChange={(e) => setPqCustomOperator(e.target.value as 'contains' | 'equals' | 'empty')}
                             className={`rounded border px-1 py-1 outline-none text-xs ${isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-700'}`}
                           >
-                            <option value="contains">contains</option>
-                            <option value="equals">equals</option>
-                            <option value="empty">empty</option>
+                            <option value="contains">{txt.filterOperator('contains')}</option>
+                            <option value="equals">{txt.filterOperator('equals')}</option>
+                            <option value="empty">{txt.filterOperator('empty')}</option>
                           </select>
                         </div>
                         {pqCustomOperator !== 'empty' && (
@@ -1493,7 +1470,7 @@ export default function Home() {
                             type="text"
                             value={pqCustomValue}
                             onChange={(e) => setPqCustomValue(e.target.value)}
-                            placeholder="value…"
+                            placeholder={txt.valuePlaceholder}
                             className={`w-full rounded border px-1.5 py-1 outline-none text-xs ${isDark ? 'bg-white/5 border-white/10 text-gray-300 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-700 placeholder-gray-400'}`}
                           />
                         )}
@@ -1518,7 +1495,7 @@ export default function Home() {
                             isDark ? 'bg-white/10 text-gray-200 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
-                          Create quick filter
+                          {txt.createQuickFilter}
                         </button>
                       </div>
                     )}
@@ -1583,9 +1560,9 @@ export default function Home() {
                             isDark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-white border-gray-200 text-gray-700'
                           }`}
                         >
-                          <option value="contains">contains</option>
-                          <option value="equals">equals</option>
-                          <option value="empty">empty</option>
+                          <option value="contains">{txt.filterOperator('contains')}</option>
+                          <option value="equals">{txt.filterOperator('equals')}</option>
+                          <option value="empty">{txt.filterOperator('empty')}</option>
                         </select>
                         {f.operator !== 'empty' && (
                           <input
@@ -1593,7 +1570,7 @@ export default function Home() {
                             value={f.value}
                             disabled={locked}
                             onChange={(e) => setPreQueryFilters(preQueryFilters.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))}
-                            placeholder="value…"
+                            placeholder={txt.valuePlaceholder}
                             className={`flex-1 min-w-0 rounded border px-1.5 py-1 outline-none text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
                               isDark ? 'bg-white/5 border-white/10 text-gray-300 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-700 placeholder-gray-400'
                             }`}
@@ -1620,7 +1597,7 @@ export default function Home() {
                       }}
                       className={`flex items-center text-[10px] font-medium h-6 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                      + Add filter
+                      {txt.addFilter}
                     </button>
                   )}
                 </CardSection>
@@ -1674,7 +1651,7 @@ export default function Home() {
                         <div className="flex items-center justify-between">
                           <span className={`text-[10px] ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{currentValue.toLocaleString()} / {maxForTier.toLocaleString()}</span>
                           {currentValue > 50_000 && (
-                            <span className="text-[10px] font-medium text-amber-500">⚠ May be slow</span>
+                            <span className="text-[10px] font-medium text-amber-500">{txt.maySlow}</span>
                           )}
                         </div>
                       </div>
@@ -1684,7 +1661,7 @@ export default function Home() {
 
                 {locked && (
                   <p className={`text-[10px] italic ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                    Clear the drawn area to modify pre-search filters.
+                    {txt.clearAreaToModify}
                   </p>
                 )}
               </div>
@@ -1727,7 +1704,7 @@ export default function Home() {
         {/* Footer */}
         <div className={`flex-shrink-0 px-5 py-3 border-t flex items-center ${d.footer}`}>
           <p className={`text-[10px] flex-1 ${d.footerText}`}>
-            Data source: SIRENE (INSEE) &middot; Open Data
+            {txt.dataSource}
           </p>
           <button
             onClick={() => { if (!user) { setAuthOpen(true) } else { setExportOpen(true) } }}
@@ -1737,18 +1714,18 @@ export default function Home() {
                 ? isDark ? 'text-gray-300 border-white/15 hover:border-white/30 hover:bg-white/5' : 'text-violet-600 border-violet-300 hover:border-violet-400 hover:bg-violet-50'
                 : isDark ? 'text-gray-700 border-white/5 cursor-not-allowed' : 'text-gray-400 border-gray-200 cursor-not-allowed'
             }`}
-            data-tooltip={user ? 'Export search results' : 'Sign in to export'} data-tooltip-pos="left"
+            data-tooltip={user ? txt.exportTooltip : txt.signInToExport} data-tooltip-pos="left"
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Export
+            {txt.export}
           </button>
         </div>
         <div className={`flex-shrink-0 px-5 py-2 border-t flex items-center justify-center gap-3 ${d.footer}`}>
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className={`text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>Privacy Policy</a>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className={`text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>{txt.privacyPolicy}</a>
           <span className={`text-[10px] ${isDark ? 'text-gray-700' : 'text-gray-300'}`}>&middot;</span>
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className={`text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>Terms of Service</a>
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className={`text-[10px] hover:underline transition-opacity ${isDark ? 'text-gray-600 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'}`}>{txt.termsOfService}</a>
         </div>
           </div>
         </div>
@@ -1767,26 +1744,26 @@ export default function Home() {
         {(handleClose) => (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Verify your email</h3>
+              <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{txt.verifyEmailTitle}</h3>
               <CloseButton onClick={handleClose} isDark={isDark} />
             </div>
             <p className={`text-[12px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Please verify your email address before subscribing to a plan. Check your inbox (and spam folder) for a verification link.
+              {txt.verifyEmailDesc}
             </p>
             <button
               onClick={async () => {
                 if (user) {
-                  try { await sendEmailVerification(user); alert('Verification email sent!') } catch { alert('Could not send email. Try again later.') }
+                  try { await sendEmailVerification(user); alert(txt.verificationEmailSentAlert) } catch { alert(txt.verificationEmailFailAlert) }
                 }
               }}
               className={`w-full text-[12px] font-medium py-2 rounded-lg transition-colors ${
                 isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'
               }`}
             >
-              Resend verification email
+              {txt.resendVerificationEmail}
             </button>
             <button onClick={handleClose} className={`w-full text-[11px] font-medium py-1.5 transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
-              Close
+              {txt.close}
             </button>
           </div>
         )}
@@ -1884,11 +1861,11 @@ export default function Home() {
       <Modal isDark={isDark} onClose={() => setOrgSetupPrompt(false)} zIndex="z-[9500]" className={`w-full md:w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
         {(handleClose) => (<>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Organization required</h3>
+            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{txt.orgRequired}</h3>
             <CloseButton onClick={handleClose} isDark={isDark} />
           </div>
           <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Set up your organization before browsing data. All enterprise features will be available once your organization is created.
+            {txt.orgRequiredDesc}
           </p>
           <a
             href="/org"
@@ -1896,7 +1873,7 @@ export default function Home() {
               isDark ? 'bg-white text-gray-900 border-white hover:bg-gray-200' : 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
             }`}
           >
-            Set up organization
+            {txt.setupOrgBtn}
           </a>
         </>)}
       </Modal>
@@ -1919,12 +1896,12 @@ export default function Home() {
       <Modal isDark={isDark} onClose={() => setRevertConfirmOpen(false)} zIndex="z-[9600]" className={`w-full md:w-[360px] p-6 ${isDark ? 'bg-gray-900 border-white/10' : 'bg-white border-gray-200'}`}>
         {(handleClose) => (<>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Revert to free plan?</h3>
+            <h3 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{txt.revertTitle}</h3>
             <CloseButton onClick={handleClose} isDark={isDark} />
           </div>
           <div className={`text-xs leading-relaxed space-y-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            <p>This action is <strong className={isDark ? 'text-white' : 'text-gray-900'}>definitive</strong>. Your discount code will be marked as used and <strong className={isDark ? 'text-white' : 'text-gray-900'}>cannot be redeemed again</strong>.</p>
-            <p>You will immediately lose access to premium features and revert to the free plan limits.</p>
+            <p>{txt.revertDesc1} <strong className={isDark ? 'text-white' : 'text-gray-900'}>{txt.revertDefinitive}</strong>{txt.revertDesc2} <strong className={isDark ? 'text-white' : 'text-gray-900'}>{txt.revertCannotRedeem}</strong>{txt.revertDesc3}</p>
+            <p>{txt.revertLoseAccess}</p>
           </div>
           <div className="flex gap-2 mt-5">
             <button
@@ -1935,7 +1912,7 @@ export default function Home() {
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              Keep my plan
+              {txt.keepPlan}
             </button>
             <button
               onClick={confirmRevertDiscount}
@@ -1945,7 +1922,7 @@ export default function Home() {
                   : 'border-red-200 text-red-600 hover:bg-red-50'
               }`}
             >
-              Revert to free
+              {txt.revertToFree}
             </button>
           </div>
         </>)}
@@ -1970,28 +1947,28 @@ export default function Home() {
     {showPortalModal && portalUrl && (
       <ConfirmModal
         isDark={isDark}
-        title="Manage your subscription"
+        title={txt.manageSubscription}
         message={
           <div className="space-y-3">
-            <p>You will be redirected to our billing partner (Stripe) where you can:</p>
+            <p>{txt.portalRedirect}</p>
             <ul className="list-disc pl-4 space-y-1">
-              <li>Update your payment method</li>
-              <li>Change your billing details</li>
-              <li>View past invoices</li>
-              <li>Cancel your subscription</li>
+              <li>{txt.portalUpdate}</li>
+              <li>{txt.portalBilling}</li>
+              <li>{txt.portalInvoices}</li>
+              <li>{txt.portalCancel}</li>
             </ul>
             <div className={`rounded-lg p-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
-              <p className={`text-[11px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>If you cancel:</p>
+              <p className={`text-[11px] font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{txt.ifYouCancel}</p>
               <ul className={`text-[11px] mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                <li>• Access continues until the end of the billing period</li>
-                <li>• All your data and saved searches are preserved</li>
-                <li>• You can resubscribe at any time</li>
+                <li>• {txt.cancelContinue}</li>
+                <li>• {txt.cancelDataPreserved}</li>
+                <li>• {txt.cancelResubscribe}</li>
               </ul>
             </div>
           </div>
         }
-        confirmLabel="Open billing portal →"
-        cancelLabel="Go back"
+        confirmLabel={txt.openBillingPortal}
+        cancelLabel={txt.goBack}
         onConfirm={() => { setShowPortalModal(false); window.location.href = portalUrl }}
         onCancel={() => setShowPortalModal(false)}
       />

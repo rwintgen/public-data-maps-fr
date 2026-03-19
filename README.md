@@ -384,7 +384,7 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] Split settings modal into "Settings" and "Data Settings" sections
 - [x] Create indexes on pre-search quick filters to improve performance
 - [x] Mobile-responsive layout
-- [ ] Translate app to FR
+- [x] Translate app to FR
 - [ ] Create private CRM dashboard
 - [ ] Expand data connectors
 - [ ] Automate data fetching and enriching (monthly)
