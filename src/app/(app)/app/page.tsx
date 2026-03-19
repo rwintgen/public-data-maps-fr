@@ -64,6 +64,8 @@ export default function Home() {
   const hasExplicitHiddenPrefs = useRef(false)
   const preQueryPresetsInit = useRef(false)
   const searchAbort = useRef<AbortController | null>(null)
+  const canHover = useRef(true)
+  useEffect(() => { canHover.current = window.matchMedia('(hover: hover)').matches }, [])
   const [prefsSaved, setPrefsSaved] = useState(false)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [showPortalModal, setShowPortalModal] = useState(false)
@@ -1335,8 +1337,8 @@ export default function Home() {
                                   isDark={isDark}
                                   disabled={locked}
                                   onClick={() => setPreQueryPresets((prev) => active ? prev.filter((id) => id !== preset.id) : [...prev, preset.id])}
-                                  onMouseEnter={() => setHoveredPQPreset(preset.id)}
-                                  onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
+                                  onMouseEnter={() => { if (canHover.current) setHoveredPQPreset(preset.id) }}
+                                  onMouseMove={(e: React.MouseEvent) => { if (canHover.current) setPresetTooltipPos({ x: e.clientX, y: e.clientY }) }}
                                   onMouseLeave={() => { setHoveredPQPreset(null); setPresetTooltipPos(null) }}
                                 />
                               </span>
@@ -1371,8 +1373,8 @@ export default function Home() {
                               org
                               disabled={locked}
                               onClick={() => setPreQueryOrgIds((prev) => active ? prev.filter((id) => id !== oq.id) : [...prev, oq.id])}
-                              onMouseEnter={() => setHoveredPQPreset(oq.id)}
-                              onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
+                              onMouseEnter={() => { if (canHover.current) setHoveredPQPreset(oq.id) }}
+                              onMouseMove={(e: React.MouseEvent) => { if (canHover.current) setPresetTooltipPos({ x: e.clientX, y: e.clientY }) }}
                               onMouseLeave={() => { setHoveredPQPreset(null); setPresetTooltipPos(null) }}
                             />
                           )
@@ -1408,8 +1410,8 @@ export default function Home() {
                                 custom
                                 disabled={locked}
                                 onClick={() => setPreQueryCustomIds((prev) => active ? prev.filter((id) => id !== cp.id) : [...prev, cp.id])}
-                                onMouseEnter={() => setHoveredPQPreset(cp.id)}
-                                onMouseMove={(e: React.MouseEvent) => setPresetTooltipPos({ x: e.clientX, y: e.clientY })}
+                                onMouseEnter={() => { if (canHover.current) setHoveredPQPreset(cp.id) }}
+                                onMouseMove={(e: React.MouseEvent) => { if (canHover.current) setPresetTooltipPos({ x: e.clientX, y: e.clientY }) }}
                                 onMouseLeave={() => { setHoveredPQPreset(null); setPresetTooltipPos(null) }}
                               />
                               {!locked && (
