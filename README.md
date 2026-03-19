@@ -382,7 +382,7 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] Default pre-search quick filters
 - [x] Default hidden fields (keep only most relevant ones)
 - [x] Split settings modal into "Settings" and "Data Settings" sections
-- [ ] Create indexes on pre-search quick filters to improve performance
+- [x] Create indexes on pre-search quick filters to improve performance
 - [ ] Create private CRM dashboard
 - [ ] Add more auth features (forgot passsword, SSO sign-in, company sign in)
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)
