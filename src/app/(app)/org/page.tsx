@@ -1042,19 +1042,21 @@ export default function OrgDashboard() {
 
               <div className={`rounded-xl border overflow-hidden ${t.card}`}>
                 {members.map((m, i) => (
-                  <div key={m.uid} className={`flex items-center px-4 py-3 ${i > 0 ? `border-t ${t.border}` : ''}`}>
-                    {m.photoURL ? (
-                      <img src={m.photoURL} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full flex-shrink-0" />
-                    ) : (
-                      <span className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
-                        {(m.displayName?.[0] ?? m.email?.[0] ?? '?').toUpperCase()}
-                      </span>
-                    )}
-                    <div className="ml-3 min-w-0 flex-1">
-                      <p className={`text-[12px] font-medium truncate ${t.title}`}>{m.displayName ?? m.email}</p>
-                      <p className={`text-[11px] truncate ${t.muted}`}>{m.email}</p>
+                  <div key={m.uid} className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 ${i > 0 ? `border-t ${t.border}` : ''}`}>
+                    <div className="flex items-center min-w-0 flex-1">
+                      {m.photoURL ? (
+                        <img src={m.photoURL} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full flex-shrink-0" />
+                      ) : (
+                        <span className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
+                          {(m.displayName?.[0] ?? m.email?.[0] ?? '?').toUpperCase()}
+                        </span>
+                      )}
+                      <div className="ml-3 min-w-0 flex-1">
+                        <p className={`text-[12px] font-medium truncate ${t.title}`}>{m.displayName ?? m.email}</p>
+                        <p className={`text-[11px] truncate ${t.muted}`}>{m.email}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {roleBadge(m.role)}
                       {isOwner && m.role !== 'owner' && (
                         <select
@@ -1088,33 +1090,35 @@ export default function OrgDashboard() {
               {canManage && (
                 <div className={`rounded-xl border p-4 space-y-3 ${t.card}`}>
                   <p className={`text-[10px] uppercase tracking-widest font-semibold ${t.label}`}>Send invitation</p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="email"
                       placeholder="Email address"
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
-                      className={`flex-1 text-[12px] px-3 py-1.5 rounded-lg border outline-none transition-colors ${t.input}`}
+                      className={`flex-1 min-w-0 text-[12px] px-3 py-1.5 rounded-lg border outline-none transition-colors ${t.input}`}
                     />
-                    {isOwner && (
-                      <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
-                        className={`text-[12px] px-2 py-1.5 rounded-lg border outline-none ${t.input}`}
+                    <div className="flex gap-2">
+                      {isOwner && (
+                        <select
+                          value={inviteRole}
+                          onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
+                          className={`text-[12px] px-2 py-1.5 rounded-lg border outline-none ${t.input}`}
+                        >
+                          <option value="member">Member</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      )}
+                      <button
+                        onClick={() => { if (!inviteEmail.trim()) return; setInviteSeatConfirm(true) }}
+                        disabled={inviteLoading || !inviteEmail.trim()}
+                        className={`text-[11px] font-medium px-4 py-1.5 rounded-lg transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'
+                        }`}
                       >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    )}
-                    <button
-                      onClick={() => { if (!inviteEmail.trim()) return; setInviteSeatConfirm(true) }}
-                      disabled={inviteLoading || !inviteEmail.trim()}
-                      className={`text-[11px] font-medium px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        isDark ? 'bg-white text-gray-900 hover:bg-gray-200' : 'bg-violet-600 text-white hover:bg-violet-700'
-                      }`}
-                    >
-                      {inviteLoading ? 'Sending…' : 'Send'}
-                    </button>
+                        {inviteLoading ? 'Sending…' : 'Send'}
+                      </button>
+                    </div>
                   </div>
                   {inviteError && <p className="text-[11px] text-red-400">{inviteError}</p>}
                 </div>
@@ -1125,14 +1129,14 @@ export default function OrgDashboard() {
                   <div className={`px-4 py-8 text-center text-[12px] ${t.muted}`}>No invitations yet</div>
                 ) : (
                   invitations.map((inv, i) => (
-                    <div key={inv.id} className={`flex items-center px-4 py-3 ${i > 0 ? `border-t ${t.border}` : ''}`}>
+                    <div key={inv.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 ${i > 0 ? `border-t ${t.border}` : ''}`}>
                       <div className="min-w-0 flex-1">
                         <p className={`text-[12px] font-medium truncate ${t.title}`}>{inv.email}</p>
                         <p className={`text-[10px] ${t.muted}`}>
                           Role: {inv.role} · Sent {new Date(inv.createdAt?._seconds ? inv.createdAt._seconds * 1000 : inv.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 ml-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {statusBadge(inv.status)}
                         {inv.status === 'pending' && inv.token && canManage && (
                           <button

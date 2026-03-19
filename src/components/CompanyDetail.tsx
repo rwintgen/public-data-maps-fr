@@ -74,7 +74,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
                 <div key={col} className="flex items-baseline gap-3 py-1.5">
                   <span
                     className={`text-xs md:text-[10px] font-medium uppercase tracking-wider flex-shrink-0 w-auto md:w-[200px] whitespace-normal break-words md:truncate cursor-default ${t.label}`}
-                    onMouseMove={(e) => setTooltip({ text: col, x: e.clientX + 12, y: e.clientY + 12 })}
+                    onMouseMove={(e) => setTooltip({ text: col, x: e.clientX - 8, y: e.clientY + 14 })}
                     onMouseLeave={() => setTooltip(null)}
                   >
                     {col}
@@ -133,7 +133,7 @@ export default function CompanyDetail({ company, displayColumns, isDark, onClose
         {tooltip && createPortal(
           <div
             className="fixed z-[10000] px-2 py-1 rounded-md bg-gray-800 text-gray-100 text-xs md:text-[11px] font-medium whitespace-nowrap pointer-events-none shadow-lg hidden md:block"
-            style={{ left: tooltip.x, top: tooltip.y }}
+            style={{ left: tooltip.x, top: tooltip.y, transform: 'translateX(-100%)' }}
           >
             {tooltip.text}
           </div>,
