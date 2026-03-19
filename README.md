@@ -383,7 +383,10 @@ The model receives the full SIRENE record and is instructed to search for: compa
 - [x] Default hidden fields (keep only most relevant ones)
 - [x] Split settings modal into "Settings" and "Data Settings" sections
 - [x] Create indexes on pre-search quick filters to improve performance
+- [x] Mobile-responsive layout
+- [ ] Translate app to FR
 - [ ] Create private CRM dashboard
+- [ ] Expand data connectors
+- [ ] Automate data fetching and enriching (monthly)
 - [ ] Add more auth features (forgot passsword, SSO sign-in, company sign in)
 - [ ] Add other data types beyond companies (e.g. schools, health facilities)
-- [ ] Mobile-responsive layout
