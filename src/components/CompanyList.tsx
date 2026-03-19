@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { PRESET_FILTERS, PRESET_GROUPS, applyPresets, type CustomPreset } from '@/lib/presets'
 import { canExportPremium, type UserTier } from '@/lib/usage'
 import { QuickFilterPill, CardSection, SectionTitle } from '@/components/ui'
@@ -769,13 +770,14 @@ function CompanyList({
             const text = builtIn ? builtIn.description
               : (() => { const f = orgQuickFilters.find((p) => p.id === hoveredPreset) ?? customPresets.find((p) => p.id === hoveredPreset); return f ? `${f.negate ? 'NOT ' : ''}${f.column} ${f.operator} ${f.value}` : null })()
             if (!text) return null
-            return (
+            return createPortal(
               <div
                 className="fixed z-[10000] pointer-events-none whitespace-nowrap hidden md:block"
                 style={{ left: presetTooltipPos.x - 8, top: presetTooltipPos.y + 14, background: '#1f2937', color: '#f3f4f6', fontSize: '11px', fontWeight: 500, lineHeight: 1.3, padding: '4px 8px', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.25)', transform: 'translateX(-100%)' }}
               >
                 {text}
-              </div>
+              </div>,
+              document.body
             )
           })()}
         </CardSection>

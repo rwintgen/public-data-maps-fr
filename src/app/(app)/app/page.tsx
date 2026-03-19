@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import CompanyList from '@/components/CompanyList'
 import SearchBar from '@/components/SearchBar'
@@ -1500,13 +1501,14 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  {hoveredDef && presetTooltipPos && (
+                  {hoveredDef && presetTooltipPos && createPortal(
                     <div
                       className="fixed z-[10000] pointer-events-none whitespace-nowrap hidden md:block"
                       style={{ left: presetTooltipPos.x - 8, top: presetTooltipPos.y + 14, background: '#1f2937', color: '#f3f4f6', fontSize: '11px', fontWeight: 500, lineHeight: 1.3, padding: '4px 8px', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.25)', transform: 'translateX(-100%)' }}
                     >
                       {'description' in hoveredDef ? (hoveredDef as any).description : `${(hoveredDef as CustomPreset).negate ? 'NOT ' : ''}${(hoveredDef as CustomPreset).column} ${(hoveredDef as CustomPreset).operator} ${(hoveredDef as CustomPreset).value}`}
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </CardSection>
 
