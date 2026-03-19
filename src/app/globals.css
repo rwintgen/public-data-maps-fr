@@ -312,7 +312,7 @@ body.app-shell {
 }
 
 /* === Tooltip system: data-tooltip attribute === */
-@media (hover: none) {
+@media (hover: none), (max-width: 767px) {
   [data-tooltip]::after { display: none !important; }
 }
 [data-tooltip] {
